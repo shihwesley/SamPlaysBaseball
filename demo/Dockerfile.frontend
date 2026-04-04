@@ -1,0 +1,30 @@
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Accept build-time env vars for Next.js static baking
+ARG NEXT_PUBLIC_DEMO_MODE=true
+ARG NEXT_PUBLIC_API_URL=http://localhost:8000
+ENV NEXT_PUBLIC_DEMO_MODE=$NEXT_PUBLIC_DEMO_MODE
+ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
+
+COPY frontend/package*.json ./
+RUN npm install
+
+COPY frontend/ ./
+RUN npm run build
+
+# Runtime image
+FROM node:20-alpine
+
+WORKDIR /app
+ENV NODE_ENV=production
+
+COPY --from=builder /app/.next ./.next
+COPY --from=builder /app/public ./public
+COPY --from=builder /app/package*.json ./
+COPY --from=builder /app/node_modules ./node_modules
+
+EXPOSE 3000
+
+CMD ["npm", "start"]
