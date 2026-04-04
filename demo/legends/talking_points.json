@@ -1,0 +1,76 @@
+{
+  "rivera": {
+    "name": "Mariano Rivera",
+    "era": "1995–2013",
+    "handedness": "R",
+    "signature_pitch": "Cutter (FC)",
+    "bio_insight": "Rivera's cutter was nearly impossible to read because his arm slot, release point, and body mechanics were functionally identical to his fastball. The cutter is thrown with the same motion but cuts 4–6 inches late due to grip. SAM 3D Body can quantify this: the arm slot angle at max external rotation differs by less than 1 degree between his fastball and cutter — within measurement noise. Release point XYZ variation across pitch types is similarly minimal. The deception is mechanical, not just grip.",
+    "quantifiable_metrics": [
+      "Arm slot angle at max external rotation (expected: <1 degree FC vs FF separation)",
+      "Release point XY deviation across pitch types (expected: <8mm)",
+      "Hip-shoulder separation timing (expected: extremely consistent across types)",
+      "Wrist pronation angle at release (only differentiator between FC and FF)"
+    ],
+    "broadcast_quality_note": "Rivera pitched 1995–2013. Most footage is standard broadcast 30fps. Expect 25–35mm joint position error. Arm slot and release point trends are reliable at this accuracy; wrist kinematics are not."
+  },
+
+  "pedro_martinez": {
+    "name": "Pedro Martinez",
+    "era": "1992–2009",
+    "handedness": "R",
+    "signature_pitch": "Changeup (CH)",
+    "bio_insight": "Pedro's changeup was historically effective because of arm-speed deception: his changeup threw at the same arm speed as his fastball — the velocity difference came from grip and finger pressure, not mechanical adjustment. SAM 3D Body can measure this by comparing the joint velocity profile of the throwing arm across pitch types. Expected finding: wrist and forearm angular velocity at release for CH should match FF within 5–8%, while actual pitch speed drops 15–18mph.",
+    "quantifiable_metrics": [
+      "Forearm angular velocity at ball release (expected: CH within 8% of FF)",
+      "Arm slot angle (expected: CH and FF within 2 degrees)",
+      "Hip rotation timing (expected: CH hip leads FF hip by <3 frames, deceptive)",
+      "Stride length normalized to height (expected: consistently 85–90% body height)"
+    ],
+    "broadcast_quality_note": "Peak Pedro was 1997–2004. Red Sox footage (2002–2004) is higher quality than Expos footage. Use broadcast quality flag. Forearm velocity measurements are borderline reliable at 30fps."
+  },
+
+  "kershaw": {
+    "name": "Clayton Kershaw",
+    "era": "2008–present",
+    "handedness": "L",
+    "signature_pitch": "Curveball (CU)",
+    "bio_insight": "Kershaw's curveball is one of the most consistent in MLB history. The key metric is arm slot repeatability: he throws his 12-6 curveball with an arm slot within 2–3 degrees of his fastball, which is what makes it hard to distinguish until late break. SAM 3D Body can measure the shoulder external rotation angle and elbow height at ball release across pitch types — expect very tight clustering. His stride length and hip alignment are also extremely repeatable.",
+    "quantifiable_metrics": [
+      "Arm slot angle at release: CU vs FF (expected: <3 degrees separation)",
+      "Elbow height at release (expected: <5mm variation across pitch types)",
+      "Stride length consistency (expected: <15mm game-to-game variation)",
+      "Hip rotation peak angular velocity (expected: high, indicating power source)"
+    ],
+    "broadcast_quality_note": "Modern career — HD footage available from 2012 onward. Pre-2012 footage is 720p broadcast. Use hd quality flag for 2012+ games. Accuracy expectations are similar to controlled footage for recent years."
+  },
+
+  "maddux": {
+    "name": "Greg Maddux",
+    "era": "1986–2008",
+    "handedness": "R",
+    "signature_pitch": "Four-seam Fastball (FF) — command, not velocity",
+    "bio_insight": "Maddux won four consecutive Cy Youngs (1992–1995) throwing 88–91mph because of release point consistency and pitch sequencing. His release point variation across a full start was reportedly smaller than nearly any other pitcher measured. SAM 3D Body can quantify this: expected release point XYZ standard deviation under 12mm across all pitch types, which is exceptional. His shoulder tilt and stride are also robotically consistent.",
+    "quantifiable_metrics": [
+      "Release point XYZ standard deviation across full outing (expected: <12mm — benchmark for command)",
+      "Shoulder tilt angle at stride foot contact (expected: <1.5 degree variation per outing)",
+      "Hip-shoulder separation consistency (expected: tight distribution, low fatigue-driven variance)",
+      "Arm slot across pitch types FF/CH/SL/CU (expected: intentionally varied — Maddux changed slots deliberately)"
+    ],
+    "broadcast_quality_note": "Maddux pitched 1986–2008. Best footage: Atlanta Braves 1992–2003, Cubs 2004–2006. All broadcast quality, 30fps. Release point metrics are robust at this accuracy level."
+  },
+
+  "randy_johnson": {
+    "name": "Randy Johnson",
+    "era": "1988–2009",
+    "handedness": "L",
+    "signature_pitch": "Four-seam Fastball (FF) + Slider (SL)",
+    "bio_insight": "At 6'10\", Johnson had the most extreme arm slot in modern pitching history — a nearly side-arm delivery for a left-hander, releasing the ball from a point well outside the left batter's box from a right-hander's perspective. SAM 3D Body can measure the release point X-offset from the rubber center, expected to be 3–5x larger than a typical overhand pitcher. His stride length (normalized to body height) is also among the longest on record, contributing to perceived velocity.",
+    "quantifiable_metrics": [
+      "Release point X-offset from rubber center (expected: 600–800mm — extreme sidearm)",
+      "Arm slot angle (expected: 10–20 degrees — near sidearm for a tall left-hander)",
+      "Stride length as fraction of body height (expected: ~90–95% — exceptionally long)",
+      "Trunk tilt angle at stride foot contact (expected: extreme lateral tilt toward third base side)"
+    ],
+    "broadcast_quality_note": "Peak Johnson: Seattle Mariners 1995, Arizona Diamondbacks 1999–2004. Broadcast quality for all footage. His extreme arm slot is robust to reduced accuracy — the signal is very strong even at 40mm joint error."
+  }
+}
