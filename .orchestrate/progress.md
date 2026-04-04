@@ -27,3 +27,37 @@
 - Features: traffic light (green/yellow/orange/red), per-factor % contribution,
   trend tracking with streak detection, positional average comparison, report generation
 - Deferred: 0
+
+## Phase 3 Sprint 2 — mesh-export + 3d-visualization + dashboard-ui + blender-render
+- Date: 2026-04-03
+- Commit: 7cc0901 (feat), fast-forward merge to main
+- Status: completed
+- Tests: 6 passing, 3 skipped (pygltflib not installed; tests correct, skip conditional)
+- Frontend build: Next.js 16.2.2 Turbopack — clean (0 type errors)
+- Files delivered:
+  - backend/app/export/ — GLBExporter (morph targets), GroundPlaneAligner (PCA), MLBMound, ComparisonGLBBuilder
+  - backend/tests/test_glb_export.py — 9 tests (6 pass, 3 skip pygltflib)
+  - frontend/ — Next.js 16 App Router, dark theme
+    - 3D: MoundScene, PitcherMesh, SkeletonOverlay, DeviationColoring, GhostOverlay, SplitSync, Stroboscope, TimelineScrubber, CameraPresets
+    - Pages: /, /pitcher/[id], /pitcher/[id]/outing/[outingId], /compare, /upload
+    - Charts: AngleTimeSeries, ReleasePointScatter, FatigueCurve, KineticChain, RadarDeviation, ArmSlotHistory, TippingImportance
+    - UI: Sidebar, PitcherCard
+    - Lib: api.ts, mesh-loader.ts
+  - scripts/blender/ — scene_setup, camera_presets, render_pitch, render_comparison, render_stroboscope, batch_render
+- Review: P0=0, P1=0, P2=7, P3=9 (all deferred)
+- Deferred: 11 items (memoization, camera preset updates, pygltflib tests, gltfpack quantization, frontend tests)
+
+## Phase 3 Sprint 1 — api-layer + ai-scouting-reports
+- Date: 2026-04-03
+- Commit: 1bc756b (feat), merge to main
+- Status: completed
+- Tests: 34 passing, 0 failing
+- Files delivered:
+  - backend/app/main.py — FastAPI app, CORS, lifespan, StorageLayer init
+  - backend/app/api/ — 10 modules: deps, models, routes, pitchers, pitches, analysis, upload, compare, websocket, demo, reports
+  - backend/app/reports/ — generator, templates, llm, pdf
+  - StorageLayer.load_analysis_by_pitcher() added to avoid N+1 queries
+- Endpoints: 17 routes covering pitchers, pitches, analysis (7 modules), upload/jobs, compare, WebSocket, demo, reports + PDF
+- Reports: pitcher/outing/pitch-type report types; LLM narrative via Claude API; template fallback; PDF via reportlab
+- Fixes applied: path traversal sanitization on upload, N+1 query on analysis endpoints
+- Deferred (P2/P3): WebSocket test, demo code dedup, datetime.utcnow deprecation, PDF temp cleanup

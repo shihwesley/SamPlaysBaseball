@@ -1,0 +1,12 @@
+{
+  "status": "done",
+  "files_created": [
+    "scripts/blender/scene_setup.py",
+    "scripts/blender/camera_presets.py",
+    "scripts/blender/render_pitch.py",
+    "scripts/blender/render_comparison.py",
+    "scripts/blender/render_stroboscope.py",
+    "scripts/blender/batch_render.py"
+  ],
+  "notes": "All scripts headless-compatible. bpy guarded. BLENDER_PATH env var for blender binary location."
+}
