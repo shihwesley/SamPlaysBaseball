@@ -60,11 +60,11 @@
 
 | Spec | Phase | Sprint | Status | Last Updated |
 |------|-------|--------|--------|-------------|
-| data-model | 1 | 1 | needs-revision | 2026-04-04 |
-| statcast-integration | 1 | 1 | needs-revision | 2026-04-04 |
+| data-model | 1 | 1 | **implemented** | 2026-04-04 |
+| statcast-integration | 1 | 1 | **implemented** | 2026-04-04 |
 | pitch-fetcher | 1 | 1 | **implemented** | 2026-04-04 |
-| video-pipeline | 1 | 2 | needs-revision | 2026-04-04 |
-| sam3d-inference | 1 | 2 | needs-revision | 2026-04-04 |
+| video-pipeline | 1 | 2 | **implemented** | 2026-04-04 |
+| sam3d-inference | 1 | 2 | **implemented** | 2026-04-04 |
 | pitch-matcher | 1 | 2 | designed | 2026-04-04 |
 | feature-extraction | 2 | 1 | draft | 2026-02-16 |
 | mesh-export | 2 | 1 | draft | 2026-02-16 |

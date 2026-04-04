@@ -80,11 +80,11 @@ graph TD
 
 | Phase | Sprint | Spec | Depends On | Status |
 |-------|--------|------|------------|--------|
-| 1 | 1 | data-model | — | needs-revision |
-| 1 | 1 | statcast-integration | data-model | needs-revision |
+| 1 | 1 | data-model | — | **implemented** |
+| 1 | 1 | statcast-integration | data-model | **implemented** |
 | 1 | 1 | pitch-fetcher | statcast-integration | **implemented** |
-| 1 | 2 | video-pipeline | data-model, pitch-fetcher | needs-revision |
-| 1 | 2 | sam3d-inference | video-pipeline | needs-revision |
+| 1 | 2 | video-pipeline | data-model, pitch-fetcher | **implemented** |
+| 1 | 2 | sam3d-inference | video-pipeline | **implemented** |
 | 1 | 2 | pitch-matcher | statcast-integration | designed |
 | 2 | 1 | feature-extraction | sam3d-inference | draft |
 | 2 | 1 | mesh-export | sam3d-inference, feature-extraction | draft |
@@ -120,9 +120,9 @@ Note: MLX port is an optimization. PyTorch/MPS already runs 2.4x faster (1.1fps 
 
 | Spec | Path | Status | Notes |
 |------|------|--------|-------|
-| data-model | specs/data-model-spec.md | needs-revision | PitchRecord/MeshData added, PitchDB not in spec |
-| video-pipeline | specs/video-pipeline-spec.md | needs-revision | Now uses Savant per-pitch clips, not FFmpeg frame extraction |
-| sam3d-inference | specs/sam3d-inference-spec.md | needs-revision | Working script exists, spec doesn't match batch_inference.py |
+| data-model | specs/data-model-spec.md | **implemented** | Revised 2026-04-04 to match actual models |
+| video-pipeline | specs/video-pipeline-spec.md | **implemented** | Revised 2026-04-04 — Savant per-pitch clips |
+| sam3d-inference | specs/sam3d-inference-spec.md | **implemented** | Revised 2026-04-04 — MPS batch inference |
 | pitch-fetcher | — | **implemented** | scripts/fetch_savant_clips.py (no spec, built directly) |
 | pitch-matcher | docs/plans/2026-04-04-pitch-matcher-design.md | designed | Tiered DTW design, blocked on pipeline output |
 | feature-extraction | specs/feature-extraction-spec.md | draft | Next to implement |
@@ -133,7 +133,7 @@ Note: MLX port is an optimization. PyTorch/MPS already runs 2.4x faster (1.1fps 
 | arm-slot-drift | specs/arm-slot-drift-spec.md | draft | |
 | timing-analysis | specs/timing-analysis-spec.md | draft | |
 | injury-risk | specs/injury-risk-spec.md | draft | |
-| statcast-integration | specs/statcast-integration-spec.md | needs-revision | StatcastFetcher exists but PitchDB enrichment is new |
+| statcast-integration | specs/statcast-integration-spec.md | **implemented** | Revised 2026-04-04 — PitchDB enrichment + PlayerSearch |
 | mesh-export | specs/mesh-export-spec.md | draft | |
 | api-layer | specs/api-layer-spec.md | draft | |
 | 3d-visualization | specs/3d-visualization-spec.md | draft | |

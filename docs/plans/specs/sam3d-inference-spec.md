@@ -4,70 +4,99 @@ phase: 1
 sprint: 2
 parent: data-model
 depends_on: [data-model, video-pipeline]
-status: in-progress
+status: implemented
 created: 2026-02-16
-updated: 2026-04-03
+updated: 2026-04-04
 ---
 
 # SAM 3D Inference Spec
 
-> **⚠ NEEDS REVISION (2026-04-04)**
-> Working implementation exists at `scripts/run_pytorch_video.py` and `scripts/batch_inference.py`. Runs on MPS (M3 Max) at 1.1 fps. Spec doesn't cover batch inference, .npz storage, or PitchDB integration. Person detection uses FasterRCNN MobileNet, not spec's approach.
+Core 3D reconstruction: takes per-pitch video clips, runs SAM 3D Body on MPS, outputs mesh + skeleton data stored in SQLite + .npz.
 
-Core 3D reconstruction: takes extracted frames, runs SAM 3D Body, outputs MHR joint + mesh data.
+## Decision: PyTorch/MPS
 
-## Decision: PyTorch/MPS (not MLX)
+PyTorch on Apple's MPS backend gives identical output to CUDA at ~670ms/frame on M3 Max. The MLX port exists but is 2.4x slower with lower quality. No cloud GPU needed for batch analysis.
 
-The MLX port was completed but produces lower-quality output due to simplified parameter limits and body model approximations. PyTorch running on Apple's MPS backend gives identical output to CUDA at ~650ms/frame on Apple Silicon. No cloud GPU needed.
+| Metric | PyTorch/MPS | MLX Port |
+|--------|------------|----------|
+| Median per frame | 670-748ms | 1773ms |
+| Throughput | 1.1-1.5 fps | 0.5 fps |
+| Mesh quality | Full fidelity | Approximated |
 
-- **Primary path:** PyTorch/MPS on Mac (Apple Silicon)
-- **MLX port:** Retained for reference/benchmarking, not used in production pipeline
-- **TurboQuant:** No longer relevant (was MLX-only optimization)
+## Implementation
 
-## Requirements
+### Single-Video Inference (scripts/run_pytorch_video.py)
 
-- Run Meta's SAM 3D Body model (DINOv3-H+ variant, 840M params) via PyTorch/MPS
-- Person detection via Faster R-CNN (torchvision, runs on same MPS device)
-- Frame-by-frame inference with optional Kalman smoothing
-- Output per-frame: mesh vertices (18439, 3), keypoints (70, 3), joint coords (127, 3), camera (3,)
-- Output per-frame: face topology (36874, 3) — constant across frames
+```bash
+python scripts/run_pytorch_video.py -i video.mp4 --mode mesh     # 3D mesh overlay
+python scripts/run_pytorch_video.py -i video.mp4 --mode skeleton  # skeleton lines
+python scripts/run_pytorch_video.py -i video.mp4 --mode full      # 4-panel comparison
+```
 
-## Acceptance Criteria
+Modes: skeleton (fast), mesh (pyrender overlay), mesh+skeleton, full (original + skeleton + mesh + side view).
 
-- [ ] SAM 3D Body loads from checkpoint on MPS device
-- [ ] Person detection per frame, largest bbox used
-- [ ] Kalman smoothing on joint trajectories for temporal consistency
-- [ ] Fixed-camera override when intrinsics provided
-- [ ] Output: PitchData with `joints_3d (T, 127, 3)`, `keypoints_3d (T, 70, 3)`, `vertices (T, 18439, 3)`, `camera (T, 3)`, `faces (36874, 3)`
-- [ ] Processing speed: ~1.5 fps on M-series Mac
-- [ ] Video pipeline: `scripts/run_pytorch_video.py` supports skeleton, mesh, and full modes
+Pipeline per frame:
+1. FasterRCNN MobileNetV3 person detection on MPS (largest bbox = pitcher)
+2. `SAM3DBodyEstimator.process_one_image()` with detected bbox
+3. Outputs: `pred_vertices (18439,3)`, `pred_keypoints_2d (70,2)`, `pred_cam_t (3,)`, `focal_length`, `pred_pose`, `pred_shape`
+4. Render mesh via pyrender (offscreen OpenGL, macOS CGL)
 
-## Technical Approach
+### Batch Inference (scripts/batch_inference.py)
 
-Load SAM 3D Body from `/tmp/sam3d-weights/model.ckpt` with MHR body model from `/tmp/sam3d-weights/assets/mhr_model.pt`. Uses SAM3DBodyEstimator from reference code directly. Person detection via torchvision Faster R-CNN MobileNetV3 on same MPS device.
+```bash
+python scripts/batch_inference.py --game-pk 813024              # all clips for a game
+python scripts/batch_inference.py --play-id 02ec65f0-...        # single pitch
+python scripts/batch_inference.py --game-pk 813024 --reprocess  # re-run existing
+```
 
-Mesh rendering via pyrender (offscreen OpenGL) for visualization modes. Keypoints follow MHR70 convention (not COCO-17) — see `sam_3d_body.metadata.mhr70` for joint ordering.
+Loads model once, iterates clips from PitchDB, stores results:
+- Mesh data → `data/meshes/{game_pk}/{play_id[:8]}.npz`
+- Metadata update → `pitches.db` (mesh_path, num_frames, inference_time_ms)
+
+### Storage Format (.npz per pitch)
+
+```python
+vertices:     (T, 18439, 3)  float32  # full mesh per frame
+joints_mhr70: (T, 70, 3)    float32  # MHR70 skeleton joints per frame
+pose_params:  (T, 136)      float64  # SMPL pose per frame
+shape_params: (45,)         float64  # body shape (constant)
+cam_t:        (T, 3)        float32  # camera translation per frame
+focal_length: ()            float64  # for re-rendering
+```
+
+~74MB per pitch clip (370 frames). ~3.8GB for a full game (52 pitches).
+
+### Model Weights
+
+- Checkpoint: `/tmp/sam3d-weights/model.ckpt`
+- MHR body model: `/tmp/sam3d-weights/assets/mhr_model.pt`
+- SAM 3D Body source: `/tmp/sam-3d-body/` (cloned from facebookresearch/sam-3d-body)
+- Person detector: torchvision FasterRCNN MobileNetV3 (downloaded on first run)
+
+## Validated
+
+- Ohtani WS Game 7 pitch 1: 370 frames, 246s total, 670ms/frame, mesh stored in .npz
+- Ohtani full clip (957 frames, 30fps): 836s total, 748ms/frame median
+- Person detection isolates pitcher from batter/umpire/coach in broadcast footage
+- MHR70 skeleton pairs from `sam_3d_body.metadata.mhr70.pose_info`
+
+## Not Implemented (deferred)
+
+- Kalman smoothing on joint trajectories (spec'd originally, not yet needed)
+- MoGe2 camera estimation (using default FOV)
+- VRAM/batch management (processing frame-by-frame, no batching needed on MPS)
 
 ## Files
 
-| File | Purpose |
-|------|---------|
-| backend/app/pipeline/inference.py | SAM3DInference class, SAM-Body4D wrapper |
-| backend/app/pipeline/smoothing.py | Kalman filter + Butterworth fallback |
-| backend/app/pipeline/camera.py | MoGe2 wrapper + fixed camera override |
-| backend/app/pipeline/gpu.py | VRAM management, batch size auto-tuning |
-| backend/tests/test_inference.py | Inference tests (mock model for CI) |
-
-## Tasks
-
-1. Set up SAM 3D Body model loading from HuggingFace
-2. Implement SAM-Body4D video pipeline wrapper
-3. Build Kalman smoothing fallback for frame-by-frame mode
-4. Implement camera estimation (MoGe2 + fixed override)
-5. Build GPU memory manager with auto batch sizing
-6. Write output aggregation to PitchData format
+| File | Purpose | Status |
+|------|---------|--------|
+| scripts/run_pytorch_video.py | Single-video SAM 3D Body inference with viz | implemented |
+| scripts/batch_inference.py | Batch inference across clips → PitchDB storage | implemented |
+| backend/app/data/pitch_db.py | MeshData storage/retrieval (.npz) | implemented |
+| backend/app/pipeline/inference.py | Pipeline-integrated inference class | planned |
+| backend/app/pipeline/smoothing.py | Kalman filter for temporal smoothing | planned |
 
 ## Dependencies
 
-- Upstream: data-model (PitchData format), video-pipeline (extracted frames)
-- Downstream: feature-extraction consumes joint data
+- Upstream: data-model (PitchDB, MeshData), video-pipeline (downloaded clips)
+- Downstream: feature-extraction consumes joints_mhr70 from .npz
