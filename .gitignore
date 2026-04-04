@@ -24,3 +24,14 @@ dist/
 *.parquet
 *.sqlite
 *.db
+data/clips/
+data/meshes/
+data/pitches.db
+
+# Model outputs
+output/*.mp4
+output/*.npy
+output/*.log
+
+# Large binaries
+*.npz

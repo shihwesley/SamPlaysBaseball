@@ -2,24 +2,17 @@
 
 ## P1 — Must Do Before Building
 
-### TODO-001: Spike SAM4Dcap on a single Ohtani pitch delivery
-- **What:** Run SAM4Dcap on one short broadcast clip of an Ohtani pitch to validate the reconstruction pipeline.
-- **Why:** The entire project rests on SAM 3D Body producing usable 3D joints from 1080p broadcast footage. If the quality is insufficient, the approach needs rethinking before writing any code.
-- **Validate:** (a) produces usable 3D joints, (b) biomechanics output maps to pitching-relevant features, (c) quality from broadcast footage is sufficient.
-- **Effort:** S (2-4 hours)
-- **Depends on:** GPU access (Colab or Lambda)
-
 ### TODO-002: Build Statcast pitch-matching engine
 - **What:** Cross-reference matching (velocity + pitch type + timing) with sequence alignment fallback (DTW / Needleman-Wunsch) to match video-detected pitches to Statcast records.
 - **Why:** This is the novel engineering piece. No open-source tool does video-pitch ↔ Statcast matching. Getting this right determines whether mechanics-to-outcomes correlations are trustworthy.
 - **Effort:** M
-- **Depends on:** TODO-001 (need to know what data comes out of SAM4Dcap)
+- **Depends on:** None (can build against assumed SAM4Dcap output schema; validate end-to-end when GPU spike completes)
 
 ### TODO-003: Rewrite specs for reframed vision
 - **What:** Update manifest, revise ~10 existing specs, add 3 new specs (stream ingestion, broadcast scene detection, companion UI). Align with the Ohtani-first, live-companion + upload dual-mode vision.
 - **Why:** Current 18 specs reflect the original upload-only concept. The CEO review reshaped the product.
 - **Effort:** M
-- **Depends on:** TODO-001 (spike validates technical approach)
+- **Depends on:** None (proceed with assumed SAM4Dcap output; spike validates quality later)
 
 ## P2 — Build During Implementation
 
@@ -27,7 +20,7 @@
 - **What:** Auto-detect individual pitch deliveries from continuous broadcast footage. Skip replays, camera cuts, commercials, and PIP overlays.
 - **Why:** Replay false positives produce garbage analysis. Camera cuts mid-delivery lose data. This is the hardest computer vision sub-problem in the pipeline.
 - **Effort:** L
-- **Depends on:** TODO-001
+- **Depends on:** None (build against assumed output schema; validate with GPU spike later)
 
 ### TODO-005: Pitcher transition detection via Statcast game log
 - **What:** Use Statcast data to know when the starter (Ohtani) leaves the game. Stop analysis, don't process reliever pitches as if they're Ohtani.
@@ -45,6 +38,14 @@
 - **Effort:** S
 
 ## Vision Items — Future Phases
+
+### VISION-007: Spike SAM4Dcap on a single Ohtani pitch delivery (was TODO-001)
+- **What:** Run SAM4Dcap on one short broadcast clip of an Ohtani pitch to validate the reconstruction pipeline.
+- **Why:** The entire project rests on SAM 3D Body producing usable 3D joints from 1080p broadcast footage. If the quality is insufficient, the approach needs rethinking before writing any code.
+- **Validate:** (a) produces usable 3D joints, (b) biomechanics output maps to pitching-relevant features, (c) quality from broadcast footage is sufficient.
+- **Effort:** S (2-4 hours)
+- **Depends on:** NVIDIA GPU access (Colab, Lambda, or similar). SAM4Dcap/SAM-Body4D pipeline requires CUDA — no MPS/Apple Silicon path exists for the full mesh+biomechanics stack.
+- **Deferred:** 2026-04-04. No local NVIDIA GPU available (M3 Max only). TODO-002/003/004 decoupled to proceed with assumed output schema.
 
 ### VISION-001: Animated kinetic chain energy flow visualization
 - **What:** Glowing trail flowing from ground through pelvis → trunk → shoulder → elbow → wrist on the 3D mesh, timed to actual kinetic chain sequence. Sankey diagram on a human body.

@@ -116,9 +116,24 @@ New: live game companion (stream mode) + upload mode (batch analysis). Both firs
 - **Fast SAM 3D Body** (arXiv:2603.15603, March 2026): 10.9x speedup, ~65ms/frame on RTX 5090. Training-free. Makes real-time feasible.
 - **SAM-Body4D** (arXiv:2512.08406): temporal consistency for video, occlusion-aware, multi-person. Core of video reconstruction.
 - **SAM4Dcap** (arXiv:2602.13760): SAM-Body4D + OpenSim for biomechanics. Directly solves video → biomechanics.
-- **fal.ai API**: SAM 3D Body at $0.02/image. Good for prototyping, expensive at scale.
-- **mlx-vlm**: SAM 3/3.1 segmentation already runs on MLX (Apple Silicon). SAM 3D Body port is feasible but separate project.
+- **SAM 3D Body on MPS** (validated 2026-04-03): PyTorch/MPS runs at 1.1 fps on M3 Max, 2.4x faster than MLX port with better mesh quality. Cloud GPU not needed for batch analysis.
+- **fal.ai API**: SAM 3D Body at $0.02/image. Good for prototyping, expensive at scale. Less relevant now that local MPS works.
+- **mlx-vlm**: SAM 3/3.1 segmentation already runs on MLX (Apple Silicon). SAM 3D Body MLX port exists but is 2.4x slower than PyTorch/MPS — optimization project, not a blocker.
 - **Driveline OpenBiomechanics**: 100K+ pitches of motion capture data. Validation reference (not direct input).
+
+### Local MPS Validation (2026-04-03)
+SAM 3D Body runs on M3 Max via PyTorch/MPS. Tested on 32s Ohtani broadcast clip (957 frames, 1280x720, MLB Network).
+
+| Metric | PyTorch/MPS | MLX Port |
+|--------|------------|----------|
+| Median per frame | **748ms** | 1773ms |
+| Throughput | **1.1 fps** | 0.5 fps |
+| Total (957 frames) | **836s (~14 min)** | 1931s (~32 min) |
+| Detection failures | — | 0/957 |
+
+PyTorch/MPS is 2.4x faster with better mesh quality. Mesh tracks Ohtani accurately from broadcast camera angle; isolates target pitcher (ignores other people in frame). Output: `output/ohtani_full_mesh.mp4`, `output/ohtani_full_pytorch.mp4`. Script: `scripts/run_pytorch_video.py`.
+
+Implication: **cloud GPU not required for batch analysis.** M3 Max handles the Ohtani MVP workload locally. Cloud GPU only needed for real-time/stream mode or SAM4Dcap biomechanics pipeline.
 
 ### Architecture Decisions
 | Decision | Choice | Rationale |
@@ -126,8 +141,8 @@ New: live game companion (stream mode) + upload mode (batch analysis). Both firs
 | Joint abstraction | Direct MHR (no abstraction layer) | Simpler. Refactor when a second model is needed. |
 | Pitcher detection | Statcast game log | No computer vision needed. Statcast records which pitcher threw each pitch. |
 | Pitch matching | Cross-reference + sequence alignment | Velocity + type + timing first, DTW/Needleman-Wunsch fallback. |
-| Inference hardware | Cloud GPU (Colab/Lambda) | Apple Silicon for dev, cloud for inference. fal.ai for prototyping. |
-| MLX port | Separate project | Fork mlx-vlm, contribute SAM 3D Body support as standalone. |
+| Inference hardware | Local MPS (batch) / Cloud GPU (stream) | M3 Max handles batch at 1.1 fps. Cloud only for real-time or SAM4Dcap. Updated 2026-04-04. |
+| MLX port | Separate project, lower priority | PyTorch/MPS already 2.4x faster than current MLX port. Port is an optimization, not a blocker. |
 | LLM fact-checking | Skip for MVP | Feed correct structured data to LLM, trust output. |
 
 ### Critical Gaps Identified
