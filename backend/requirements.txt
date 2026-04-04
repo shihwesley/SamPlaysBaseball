@@ -11,3 +11,6 @@ scikit-learn>=1.3
 pybaseball>=2.2
 pandas>=2.0
 pyrender>=0.1.45
+xgboost>=2.0
+shap>=0.42
+ruptures>=1.1
