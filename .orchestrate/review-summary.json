@@ -1,0 +1,11 @@
+{
+  "test_review": {"P0": 0, "P1": 0, "P2": 0, "P3": 0},
+  "code_review": {"P0": 0, "P1": 0, "P2": 1, "P3": 1},
+  "perf_review": {"P0": 0, "P1": 0, "P2": 0, "P3": 1},
+  "verdict": "p2_p3_only",
+  "notes": [
+    "P2: angles.py computes elbow_flexion/etc with frame-by-frame Python loops — acceptable for current scale but could be vectorized with numpy broadcasting for large batches",
+    "P3: trunk_rotation sign convention (+/-) is empirically defined and undocumented beyond the inline comment",
+    "P3: kinetics.py search_end_frame defaults to T which means wrist speed peak could be found after release — callers should pass release+1"
+  ]
+}
