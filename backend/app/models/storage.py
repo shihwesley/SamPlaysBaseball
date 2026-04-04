@@ -293,3 +293,20 @@ class StorageLayer:
                     (pitch_id,),
                 ).fetchall()
         return [json.loads(r["result_json"]) for r in rows]
+
+    def load_analysis_by_pitcher(
+        self, pitcher_id: str, module: str | None = None
+    ) -> list[dict]:
+        """Load all analysis results for a pitcher in one query (no N+1)."""
+        with self._conn() as conn:
+            if module:
+                rows = conn.execute(
+                    "SELECT result_json FROM analysis_results WHERE pitcher_id = ? AND module = ?",
+                    (pitcher_id, module),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT result_json FROM analysis_results WHERE pitcher_id = ?",
+                    (pitcher_id,),
+                ).fetchall()
+        return [json.loads(r["result_json"]) for r in rows]
