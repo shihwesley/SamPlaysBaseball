@@ -1,23 +1,17 @@
 ## Performance Review
-P0: 0 | P1: 1 | P2: 1 | P3: 2
+P0: 0 | P1: 0 | P2: 2 | P3: 3
 
-### P1: _load_by_module does N sequential queries (analysis.py, generator.py)
-For a pitcher with 100 pitches, `_load_by_module` calls `load_analysis` 100 times — one SQLite query per pitch. StorageLayer has no batch query method. This is the primary perf concern for pitchers with large pitch histories. A single `WHERE pitcher_id = ? AND module = ?` query on `analysis_results` would collapse this to one query. Currently the module has no such method; adding it would require a StorageLayer change which is out of scope for this phase — deferred.
+### P2: Stroboscope.tsx loads N GLBs simultaneously
+`glbUrls.map(url => PitcherMesh with url)` causes N concurrent useGLTF fetches. With 20 pitches this spawns 20 fetch + parse operations at once. For small N (<10) this is fine. For N=20 add a loading queue or progressive rendering. Deferred — N is bounded by UX (the slider caps at 20).
 
-### P2: GET /api/pitches/{id} returns full joint arrays (potentially large)
-A 60-frame pitch at T×127×3 float64 ≈ 180k floats ≈ 1.4MB JSON. The spec calls for this. No streaming or chunking. Acceptable for single pitch requests but note clients should not request many concurrently.
+### P2: plotly.js adds ~3.5MB to bundle
+`plotly.js` is dynamically imported via `next/dynamic` with `ssr: false`, which code-splits it correctly. The chunk will only load when a chart component is rendered. Already mitigated by dynamic import — no action needed for P2, just a size note.
 
-### P3: GET /api/compare loads both pitches fully into memory simultaneously
-Two large joint arrays in memory at once. For T=90 pitches both sides: ~2.8MB combined. Fine for the use case (side-by-side visualization) but worth noting.
+### P3: SplitSync renders two Canvas elements
+Each R3F Canvas creates its own WebGL context. Most browsers limit contexts to 8-16. Two contexts for SplitSync is fine, but combining with a MoundScene would be 3+. Acceptable for current use. Long-term: share a single context with multiple viewports.
 
-### P3: ReportGenerator._latest iterates pitches in reverse to find last result
-```python
-for pid in reversed(pitch_ids):
-    results = self.storage.load_analysis(pid, module=module)
-```
-Same N-query issue as above. Acceptable for report generation (infrequent), not for hot paths.
+### P3: GLB export for 18439 verts × N frames creates large blob
+A 60-frame GLB with 18439 vertices = 60 × 18439 × 12 bytes ≈ 13MB uncompressed. The spec notes meshopt quantization via gltfpack as a post-process step — this is not currently applied in the exporter. The 5MB target requires gltfpack post-processing. Deferred — acceptable for dev, document requirement.
 
-### Positives
-- Pitcher list uses SQL for distinct pitch types (not Python-level dedup)
-- Pagination on /pitchers/{id}/pitches prevents unbounded result sets
-- Demo storage is lazily initialized — no startup cost if demo not used
+### P3: PitcherMesh.tsx loops morphTargetInfluences on every currentFrame change
+Setting all morph target influences to 0 then setting one to 1 is O(N) per frame change. For 60 frames this is negligible. For 300+ frames (slow-motion) it would still be fast — no concern.

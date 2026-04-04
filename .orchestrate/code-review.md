@@ -1,31 +1,23 @@
 ## Code Review
-P0: 0 | P1: 1 | P2: 2 | P3: 3
+P0: 0 | P1: 0 | P2: 3 | P3: 4
 
-### P1: Path traversal risk in upload.py
-`pitcher_id` from form input is used directly in a path:
-```python
-video_dir = _VIDEO_DIR / pitcher_id
-```
-A malicious pitcher_id like `../../etc` would write outside the intended directory. Should sanitize: strip path separators, validate alphanumeric + hyphens only.
+### P2: PitcherMesh.tsx traversal runs on every render
+`scene.traverse()` to check `hasMorphTargets` runs synchronously on every render cycle. Should be memoized with `useMemo` or computed once in a `useEffect`. Low-impact at small frame counts but accumulates with complex scenes.
 
-### P2: _build_summaries has N+1 pattern for pitch_count
-For each pitcher, calls `storage.list_pitch_ids()` (one SQL query per pitcher) then another query for distinct pitch_types. With 50 pitchers this is 100+ queries. Both can be one aggregation query.
+### P2: TimelineScrubber useEffect missing stable onFrameChange reference
+The `useEffect` for playback interval includes `onFrameChange` in deps but it's passed from parent and recreates on every render. Will cause interval to reset continuously if parent doesn't memoize the callback. Fix: wrap `onFrameChange` in `useCallback` at call sites, or use `useRef` for the callback inside TimelineScrubber.
 
-### P2: demo.py duplicates logic from real endpoints verbatim
-pitchers.py `_build_summaries` is reimplemented in demo.py rather than extracted to a shared utility. Creates drift risk when real endpoints change.
+### P2: GhostOverlay clones scene on every render
+`clone(scene)` from SkeletonUtils is called inside the component body, meaning it runs on every render. Should be wrapped in `useMemo([scene])`.
 
-### P3: datetime.utcnow() deprecation (Python 3.14)
-upload.py and api/models.py use `datetime.utcnow()` which is deprecated. Should use `datetime.now(UTC)`. Not blocking for Python ≤3.12 targets.
+### P3: comparison.py sets Buffer after building meshes
+Buffer is appended after all meshes are built, but bufferViews reference buffer index 0. This works because GLTF2() starts with no buffers, but it's fragile. Index 0 is only valid because no other buffers exist.
 
-### P3: upload.py doesn't validate pitch_type values
-Any string is accepted as pitch_type. Could be constrained to known types (FF, SL, CH, etc.) but spec doesn't require it, so minor.
+### P3: ground_plane.py SVD may return non-deterministic normal direction
+`np.linalg.svd` returns V^T rows in arbitrary sign — the ground normal could point up or down. The `np.cross(ground_normal, up)` and `c = np.dot(ground_normal, up)` computation handles this mathematically (rotation will flip if c < 0), but `abs(c + 1.0) < 1e-8` edge case check could miss near-antiparallel case. Low risk in practice.
 
-### P3: pdf.py temp files not cleaned up
-`_serve_pdf` in reports.py creates a NamedTemporaryFile with `delete=False` but never deletes it after the response is served. Fine for low-volume usage, accumulates on disk over time.
+### P3: frontend/src/lib/api.ts — no request timeout or retry
+`apiFetch` has no timeout or AbortController. Long video uploads or slow analysis queries will hang indefinitely. Acceptable for MVP; production would add `AbortSignal.timeout(30000)`.
 
-### Positives
-- Clean separation of deps.py to avoid circular imports
-- All routes use parameterized SQL (no injection risk)
-- Consistent use of `from __future__ import annotations`
-- LLM fallback pattern is robust — never raises to caller
-- Demo mode correctly isolated to separate storage instance
+### P3: MoundScene.tsx camera position doesn't update when cameraPreset changes
+The `canvas camera` prop is set once at mount time. Changing `cameraPreset` after mount won't move the camera. CameraPresets component calls `onPresetChange` but nothing in MoundScene re-positions the camera. Fix: use `useThree` to imperatively set camera, or pass preset to a separate Camera component inside Canvas.

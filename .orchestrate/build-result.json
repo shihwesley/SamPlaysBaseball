@@ -1,0 +1,15 @@
+{
+  "status": "passed",
+  "backend_tests": {
+    "passed": 6,
+    "skipped": 3,
+    "failed": 0,
+    "skip_reason": "pygltflib not installed in test env — GLBExporter/ComparisonBuilder tests skipped"
+  },
+  "frontend_build": {
+    "status": "passed",
+    "framework": "Next.js 16.2.2 (Turbopack)",
+    "routes": ["/", "/compare", "/upload", "/pitcher/[id]", "/pitcher/[id]/outing/[outingId]"]
+  },
+  "notes": "All non-dependency-gated tests pass. Frontend builds cleanly with no type errors."
+}
