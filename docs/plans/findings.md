@@ -100,3 +100,50 @@ graph TD
 
 ## Visual/Browser Findings
 -
+
+## CEO Review Findings (2026-04-03)
+
+### Vision Reframe
+Original: upload bullpen video, study analysis after the fact.
+New: live game companion (stream mode) + upload mode (batch analysis). Both first-class. Same analysis engine underneath.
+
+### Starting Scope: Ohtani MVP
+- Build complete mechanical analysis of Shohei Ohtani from YouTube broadcast footage + Statcast data
+- Single pitcher, consistent camera angle (CF cam), 5-20 games
+- Validate SAM 3D Body quality from broadcast footage before expanding
+
+### Key Discoveries
+- **Fast SAM 3D Body** (arXiv:2603.15603, March 2026): 10.9x speedup, ~65ms/frame on RTX 5090. Training-free. Makes real-time feasible.
+- **SAM-Body4D** (arXiv:2512.08406): temporal consistency for video, occlusion-aware, multi-person. Core of video reconstruction.
+- **SAM4Dcap** (arXiv:2602.13760): SAM-Body4D + OpenSim for biomechanics. Directly solves video → biomechanics.
+- **fal.ai API**: SAM 3D Body at $0.02/image. Good for prototyping, expensive at scale.
+- **mlx-vlm**: SAM 3/3.1 segmentation already runs on MLX (Apple Silicon). SAM 3D Body port is feasible but separate project.
+- **Driveline OpenBiomechanics**: 100K+ pitches of motion capture data. Validation reference (not direct input).
+
+### Architecture Decisions
+| Decision | Choice | Rationale |
+|----------|--------|-----------|
+| Joint abstraction | Direct MHR (no abstraction layer) | Simpler. Refactor when a second model is needed. |
+| Pitcher detection | Statcast game log | No computer vision needed. Statcast records which pitcher threw each pitch. |
+| Pitch matching | Cross-reference + sequence alignment | Velocity + type + timing first, DTW/Needleman-Wunsch fallback. |
+| Inference hardware | Cloud GPU (Colab/Lambda) | Apple Silicon for dev, cloud for inference. fal.ai for prototyping. |
+| MLX port | Separate project | Fork mlx-vlm, contribute SAM 3D Body support as standalone. |
+| LLM fact-checking | Skip for MVP | Feed correct structured data to LLM, trust output. |
+
+### Critical Gaps Identified
+1. Broadcast pitch segmentation (replay false positives)
+2. Wrong-person reconstruction (no verification)
+3. NaN handling in feature extraction
+4. Statcast pitch matching from broadcast footage with camera cuts
+
+### Latency Budget (stream mode, future)
+Total per pitch: ~7 seconds. Time between pitches: ~20-25 seconds. Feasible.
+
+### Sources
+- Fast SAM 3D Body: https://github.com/yangtiming/Fast-SAM-3D-Body
+- SAM-Body4D: https://github.com/gaomingqi/sam-body4d
+- SAM 3D Body: https://github.com/facebookresearch/sam-3d-body
+- SAM4Dcap: https://arxiv.org/html/2602.13760
+- fal.ai: https://fal.ai/models/fal-ai/sam-3/3d-body
+- mlx-vlm: https://github.com/Blaizzy/mlx-vlm
+- HuggingFace model: https://huggingface.co/facebook/sam-3d-body-dinov3

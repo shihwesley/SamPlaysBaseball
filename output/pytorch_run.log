@@ -1,0 +1,1100 @@
+/tmp/sam-3d-body/sam_3d_body/models/heads/mhr_head.py:33: UserWarning: Momentum is not enabled
+  warnings.warn("Momentum is not enabled")
+Using cache found in /Users/quartershots/.cache/torch/hub/facebookresearch_dinov3_main
+Ignored kwargs: {'drop_path': 0.1}
+The model and loaded state dict do not match exactly
+
+missing keys in source state_dict: backbone.encoder.mask_token, head_pose.hand_pose_comps_ori, head_pose.mhr.face_expressions_model.shape_vectors, head_pose.mhr.pose_correctives_model.pose_dirs_predictor.0.sparse_indices, head_pose.mhr.pose_correctives_model.pose_dirs_predictor.0.sparse_weight, head_pose.mhr.pose_correctives_model.pose_dirs_predictor.2.weight, head_pose.mhr.character_torch.skeleton.joint_translation_offsets, head_pose.mhr.character_torch.skeleton.joint_prerotations, head_pose.mhr.character_torch.skeleton.pmi, head_pose.mhr.character_torch.skeleton.joint_parents, head_pose.mhr.character_torch.mesh.rest_vertices, head_pose.mhr.character_torch.mesh.faces, head_pose.mhr.character_torch.mesh.texcoords, head_pose.mhr.character_torch.mesh.texcoord_faces, head_pose.mhr.character_torch.parameter_transform.parameter_transform, head_pose.mhr.character_torch.parameter_transform.pose_parameters, head_pose.mhr.character_torch.parameter_transform.rigid_parameters, head_pose.mhr.character_torch.parameter_transform.scaling_parameters, head_pose.mhr.character_torch.linear_blend_skinning.inverse_bind_pose, head_pose.mhr.character_torch.linear_blend_skinning.skin_indices_flattened, head_pose.mhr.character_torch.linear_blend_skinning.skin_weights_flattened, head_pose.mhr.character_torch.linear_blend_skinning.vert_indices_flattened, head_pose.mhr.character_torch.parameter_limits.minmax_min, head_pose.mhr.character_torch.parameter_limits.minmax_max, head_pose.mhr.character_torch.parameter_limits.minmax_weight, head_pose.mhr.character_torch.parameter_limits.minmax_parameter_index, head_pose.mhr.character_torch.parameter_limits.minmaxjoint_index, head_pose.mhr.character_torch.parameter_limits.minmaxjoint_min, head_pose.mhr.character_torch.parameter_limits.minmaxjoint_max, head_pose.mhr.character_torch.parameter_limits.minmaxjoint_weight, head_pose.mhr.character_torch.parameter_limits.linear_refidx, head_pose.mhr.character_torch.parameter_limits.linear_targetidx, head_pose.mhr.character_torch.parameter_limits.linear_scale, head_pose.mhr.character_torch.parameter_limits.linear_offset, head_pose.mhr.character_torch.parameter_limits.linear_weight, head_pose.mhr.character_torch.parameter_limits.linear_range_min, head_pose.mhr.character_torch.parameter_limits.linear_range_max, head_pose.mhr.character_torch.parameter_limits.linear_joint_refidx, head_pose.mhr.character_torch.parameter_limits.linear_joint_targetidx, head_pose.mhr.character_torch.parameter_limits.linear_joint_scale, head_pose.mhr.character_torch.parameter_limits.linear_joint_offset, head_pose.mhr.character_torch.parameter_limits.linear_joint_weight, head_pose.mhr.character_torch.parameter_limits.linear_joint_range_min, head_pose.mhr.character_torch.parameter_limits.linear_joint_range_max, head_pose.mhr.character_torch.parameter_limits.halfplane_param1_idx, head_pose.mhr.character_torch.parameter_limits.halfplane_param2_idx, head_pose.mhr.character_torch.parameter_limits.halfplane_normal, head_pose.mhr.character_torch.parameter_limits.halfplane_offset, head_pose.mhr.character_torch.parameter_limits.halfplane_weight, head_pose.mhr.character_torch.parameter_limits.ellipsoid_parent, head_pose.mhr.character_torch.parameter_limits.ellipsoid_ellipsoid_parent, head_pose.mhr.character_torch.parameter_limits.ellipsoid_offset, head_pose.mhr.character_torch.parameter_limits.ellipsoid_ellipsoid, head_pose.mhr.character_torch.parameter_limits.ellipsoid_ellipsoid_inv, head_pose.mhr.character_torch.parameter_limits.ellipsoid_weight, head_pose.mhr.character_torch.blend_shape.shape_vectors, head_pose.mhr.character_torch.blend_shape.base_shape, head_pose_hand.hand_pose_comps_ori, head_pose_hand.mhr.face_expressions_model.shape_vectors, head_pose_hand.mhr.pose_correctives_model.pose_dirs_predictor.0.sparse_indices, head_pose_hand.mhr.pose_correctives_model.pose_dirs_predictor.0.sparse_weight, head_pose_hand.mhr.pose_correctives_model.pose_dirs_predictor.2.weight, head_pose_hand.mhr.character_torch.skeleton.joint_translation_offsets, head_pose_hand.mhr.character_torch.skeleton.joint_prerotations, head_pose_hand.mhr.character_torch.skeleton.pmi, head_pose_hand.mhr.character_torch.skeleton.joint_parents, head_pose_hand.mhr.character_torch.mesh.rest_vertices, head_pose_hand.mhr.character_torch.mesh.faces, head_pose_hand.mhr.character_torch.mesh.texcoords, head_pose_hand.mhr.character_torch.mesh.texcoord_faces, head_pose_hand.mhr.character_torch.parameter_transform.parameter_transform, head_pose_hand.mhr.character_torch.parameter_transform.pose_parameters, head_pose_hand.mhr.character_torch.parameter_transform.rigid_parameters, head_pose_hand.mhr.character_torch.parameter_transform.scaling_parameters, head_pose_hand.mhr.character_torch.linear_blend_skinning.inverse_bind_pose, head_pose_hand.mhr.character_torch.linear_blend_skinning.skin_indices_flattened, head_pose_hand.mhr.character_torch.linear_blend_skinning.skin_weights_flattened, head_pose_hand.mhr.character_torch.linear_blend_skinning.vert_indices_flattened, head_pose_hand.mhr.character_torch.parameter_limits.minmax_min, head_pose_hand.mhr.character_torch.parameter_limits.minmax_max, head_pose_hand.mhr.character_torch.parameter_limits.minmax_weight, head_pose_hand.mhr.character_torch.parameter_limits.minmax_parameter_index, head_pose_hand.mhr.character_torch.parameter_limits.minmaxjoint_index, head_pose_hand.mhr.character_torch.parameter_limits.minmaxjoint_min, head_pose_hand.mhr.character_torch.parameter_limits.minmaxjoint_max, head_pose_hand.mhr.character_torch.parameter_limits.minmaxjoint_weight, head_pose_hand.mhr.character_torch.parameter_limits.linear_refidx, head_pose_hand.mhr.character_torch.parameter_limits.linear_targetidx, head_pose_hand.mhr.character_torch.parameter_limits.linear_scale, head_pose_hand.mhr.character_torch.parameter_limits.linear_offset, head_pose_hand.mhr.character_torch.parameter_limits.linear_weight, head_pose_hand.mhr.character_torch.parameter_limits.linear_range_min, head_pose_hand.mhr.character_torch.parameter_limits.linear_range_max, head_pose_hand.mhr.character_torch.parameter_limits.linear_joint_refidx, head_pose_hand.mhr.character_torch.parameter_limits.linear_joint_targetidx, head_pose_hand.mhr.character_torch.parameter_limits.linear_joint_scale, head_pose_hand.mhr.character_torch.parameter_limits.linear_joint_offset, head_pose_hand.mhr.character_torch.parameter_limits.linear_joint_weight, head_pose_hand.mhr.character_torch.parameter_limits.linear_joint_range_min, head_pose_hand.mhr.character_torch.parameter_limits.linear_joint_range_max, head_pose_hand.mhr.character_torch.parameter_limits.halfplane_param1_idx, head_pose_hand.mhr.character_torch.parameter_limits.halfplane_param2_idx, head_pose_hand.mhr.character_torch.parameter_limits.halfplane_normal, head_pose_hand.mhr.character_torch.parameter_limits.halfplane_offset, head_pose_hand.mhr.character_torch.parameter_limits.halfplane_weight, head_pose_hand.mhr.character_torch.parameter_limits.ellipsoid_parent, head_pose_hand.mhr.character_torch.parameter_limits.ellipsoid_ellipsoid_parent, head_pose_hand.mhr.character_torch.parameter_limits.ellipsoid_offset, head_pose_hand.mhr.character_torch.parameter_limits.ellipsoid_ellipsoid, head_pose_hand.mhr.character_torch.parameter_limits.ellipsoid_ellipsoid_inv, head_pose_hand.mhr.character_torch.parameter_limits.ellipsoid_weight, head_pose_hand.mhr.character_torch.blend_shape.shape_vectors, head_pose_hand.mhr.character_torch.blend_shape.base_shape
+
+Input: input/ohtani_full.mp4
+  Resolution: 1280x720
+  FPS: 30.0, Frames: 957
+
+Loading PyTorch SAM 3D Body on mps...
+Loading SAM 3D Body model...
+No human detector is used...
+Mask-condition inference is not supported...
+No FOV estimator... Using the default FOV!
+Model loaded in 11.9s
+
+Processing frames...
+####### Please make sure the input image is in RGB format
+  Frame    0/957  1474ms/frame  ETA: 1411s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame    9/957  946ms/frame  ETA: 897s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame   19/957  891ms/frame  ETA: 836s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame   29/957  938ms/frame  ETA: 871s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame   39/957  856ms/frame  ETA: 786s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame   49/957  948ms/frame  ETA: 861s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame   59/957  874ms/frame  ETA: 785s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame   69/957  908ms/frame  ETA: 807s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame   79/957  995ms/frame  ETA: 874s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame   89/957  1014ms/frame  ETA: 880s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame   99/957  955ms/frame  ETA: 820s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  109/957  1024ms/frame  ETA: 869s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  119/957  957ms/frame  ETA: 802s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  129/957  1015ms/frame  ETA: 841s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  139/957  1100ms/frame  ETA: 900s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  149/957  969ms/frame  ETA: 783s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  159/957  921ms/frame  ETA: 735s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  169/957  1060ms/frame  ETA: 835s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  179/957  973ms/frame  ETA: 757s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  189/957  910ms/frame  ETA: 699s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  199/957  879ms/frame  ETA: 666s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  209/957  949ms/frame  ETA: 710s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  219/957  951ms/frame  ETA: 702s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  229/957  939ms/frame  ETA: 683s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  239/957  935ms/frame  ETA: 672s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  249/957  887ms/frame  ETA: 628s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  259/957  919ms/frame  ETA: 641s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  269/957  956ms/frame  ETA: 657s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  279/957  955ms/frame  ETA: 647s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  289/957  956ms/frame  ETA: 639s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  299/957  950ms/frame  ETA: 625s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  309/957  899ms/frame  ETA: 582s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  319/957  953ms/frame  ETA: 608s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  329/957  900ms/frame  ETA: 565s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  339/957  924ms/frame  ETA: 571s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  349/957  849ms/frame  ETA: 516s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  359/957  825ms/frame  ETA: 493s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  369/957  831ms/frame  ETA: 488s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  379/957  832ms/frame  ETA: 481s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  389/957  829ms/frame  ETA: 471s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  399/957  822ms/frame  ETA: 458s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  409/957  857ms/frame  ETA: 470s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  419/957  845ms/frame  ETA: 455s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  429/957  849ms/frame  ETA: 448s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  439/957  835ms/frame  ETA: 432s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  449/957  844ms/frame  ETA: 429s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  459/957  834ms/frame  ETA: 415s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  469/957  848ms/frame  ETA: 414s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  479/957  817ms/frame  ETA: 390s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  489/957  818ms/frame  ETA: 383s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  499/957  831ms/frame  ETA: 381s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  509/957  818ms/frame  ETA: 367s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  519/957  852ms/frame  ETA: 373s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  529/957  840ms/frame  ETA: 360s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  539/957  842ms/frame  ETA: 352s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  549/957  806ms/frame  ETA: 329s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  559/957  841ms/frame  ETA: 335s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  569/957  833ms/frame  ETA: 323s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  579/957  844ms/frame  ETA: 319s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  589/957  837ms/frame  ETA: 308s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  599/957  825ms/frame  ETA: 295s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  609/957  844ms/frame  ETA: 294s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  619/957  799ms/frame  ETA: 270s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  629/957  835ms/frame  ETA: 274s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  639/957  837ms/frame  ETA: 266s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  649/957  787ms/frame  ETA: 242s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  659/957  857ms/frame  ETA: 255s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  669/957  839ms/frame  ETA: 242s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  679/957  788ms/frame  ETA: 219s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  689/957  795ms/frame  ETA: 213s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  699/957  824ms/frame  ETA: 213s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  709/957  822ms/frame  ETA: 204s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  719/957  860ms/frame  ETA: 205s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  729/957  842ms/frame  ETA: 192s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  739/957  840ms/frame  ETA: 183s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  749/957  824ms/frame  ETA: 171s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  759/957  850ms/frame  ETA: 168s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  769/957  841ms/frame  ETA: 158s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  779/957  868ms/frame  ETA: 154s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  789/957  867ms/frame  ETA: 146s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  799/957  832ms/frame  ETA: 132s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  809/957  838ms/frame  ETA: 124s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  819/957  857ms/frame  ETA: 118s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  829/957  843ms/frame  ETA: 108s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  839/957  806ms/frame  ETA: 95s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  849/957  814ms/frame  ETA: 88s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  859/957  846ms/frame  ETA: 83s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  869/957  846ms/frame  ETA: 74s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  879/957  846ms/frame  ETA: 66s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  889/957  839ms/frame  ETA: 57s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  899/957  843ms/frame  ETA: 49s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  909/957  839ms/frame  ETA: 40s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  919/957  794ms/frame  ETA: 30s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  929/957  836ms/frame  ETA: 23s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  939/957  841ms/frame  ETA: 15s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+  Frame  949/957  813ms/frame  ETA: 7s
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+####### Please make sure the input image is in RGB format
+
+============================================================
+PyTorch/MPS Video Processing Complete
+============================================================
+  Frames processed: 957
+  Total inference:  836.5s
+  Median per frame: 748ms
+  Throughput:       1.1 fps
+  Output:           output/ohtani_full_pytorch.mp4
+Traceback (most recent call last):
+  File "/Users/quartershots/Source/SamPlaysBaseball/scripts/run_pytorch_video.py", line 223, in <module>
+    process_video(
+    ~~~~~~~~~~~~~^
+        input_path=args.input,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    ...<2 lines>...
+        skip_frames=args.skip,
+        ^^^^^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/Users/quartershots/Source/SamPlaysBaseball/scripts/run_pytorch_video.py", line 207, in process_video
+    print(f"  Output size:      {Path(output_path).stat().st_size / 1024**2:.1f} MB")
+                                 ~~~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 654, in stat
+    return os.stat(self, follow_symlinks=follow_symlinks)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'output/ohtani_full_pytorch.mp4'

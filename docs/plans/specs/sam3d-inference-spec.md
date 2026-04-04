@@ -4,38 +4,46 @@ phase: 1
 sprint: 2
 parent: data-model
 depends_on: [data-model, video-pipeline]
-status: draft
+status: in-progress
 created: 2026-02-16
+updated: 2026-04-03
 ---
 
 # SAM 3D Inference Spec
 
-Core 3D reconstruction: takes extracted frames, runs SAM-Body4D, outputs MHR joint data.
+Core 3D reconstruction: takes extracted frames, runs SAM 3D Body, outputs MHR joint + mesh data.
+
+## Decision: PyTorch/MPS (not MLX)
+
+The MLX port was completed but produces lower-quality output due to simplified parameter limits and body model approximations. PyTorch running on Apple's MPS backend gives identical output to CUDA at ~650ms/frame on Apple Silicon. No cloud GPU needed.
+
+- **Primary path:** PyTorch/MPS on Mac (Apple Silicon)
+- **MLX port:** Retained for reference/benchmarking, not used in production pipeline
+- **TurboQuant:** No longer relevant (was MLX-only optimization)
 
 ## Requirements
 
-- Integrate Meta's SAM 3D Body model (DINOv3-H+ variant, 840M params)
-- Use SAM-Body4D for video temporal consistency (preferred over raw frame-by-frame)
-- Fallback to frame-by-frame + Kalman smoothing when SAM-Body4D unavailable
-- Camera estimation via MoGe2, with override for known camera intrinsics
-- Output PitchData objects with full joint/pose/shape data per pitch
+- Run Meta's SAM 3D Body model (DINOv3-H+ variant, 840M params) via PyTorch/MPS
+- Person detection via Faster R-CNN (torchvision, runs on same MPS device)
+- Frame-by-frame inference with optional Kalman smoothing
+- Output per-frame: mesh vertices (18439, 3), keypoints (70, 3), joint coords (127, 3), camera (3,)
+- Output per-frame: face topology (36874, 3) — constant across frames
 
 ## Acceptance Criteria
 
-- [ ] SAM 3D Body loads from HuggingFace (`facebook/sam-3d-body-dinov3`)
-- [ ] SAM-Body4D pipeline processes video frames with temporal consistency
-- [ ] Kalman smoothing fallback produces clean joint trajectories
-- [ ] Fixed-camera override skips MoGe2 when intrinsics provided
-- [ ] Batch inference supported (configurable batch size based on VRAM)
-- [ ] Output: PitchData with `joints_3d (T, 127, 3)`, `body_pose (T, 136)`, `shape_params (45,)`
-- [ ] GPU memory management: graceful handling of OOM, auto batch size reduction
-- [ ] Processing speed logged: frames/sec, pitches/hour
+- [ ] SAM 3D Body loads from checkpoint on MPS device
+- [ ] Person detection per frame, largest bbox used
+- [ ] Kalman smoothing on joint trajectories for temporal consistency
+- [ ] Fixed-camera override when intrinsics provided
+- [ ] Output: PitchData with `joints_3d (T, 127, 3)`, `keypoints_3d (T, 70, 3)`, `vertices (T, 18439, 3)`, `camera (T, 3)`, `faces (36874, 3)`
+- [ ] Processing speed: ~1.5 fps on M-series Mac
+- [ ] Video pipeline: `scripts/run_pytorch_video.py` supports skeleton, mesh, and full modes
 
 ## Technical Approach
 
-Load SAM 3D Body via the official `notebook.utils.setup_sam_3d_body` API. For SAM-Body4D: SAM 3 video segmentation for identity-consistent masks → SAM 3D Body per frame with mask guidance → Kalman smoothing on MHR pose parameters. Fixed body shape from first visible frame (shape doesn't change between pitches).
+Load SAM 3D Body from `/tmp/sam3d-weights/model.ckpt` with MHR body model from `/tmp/sam3d-weights/assets/mhr_model.pt`. Uses SAM3DBodyEstimator from reference code directly. Person detection via torchvision Faster R-CNN MobileNetV3 on same MPS device.
 
-Batch processing with padding for SAM-Body4D's 2x speedup. GPU memory: start at batch_size=4, halve on OOM, retry.
+Mesh rendering via pyrender (offscreen OpenGL) for visualization modes. Keypoints follow MHR70 convention (not COCO-17) — see `sam_3d_body.metadata.mhr70` for joint ordering.
 
 ## Files
 

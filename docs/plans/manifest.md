@@ -4,7 +4,7 @@
 **Date:** 2026-02-16
 **Mode:** Spec-driven
 **Priority:** Quality
-**Stack:** Next.js + FastAPI + SAM 3D Body (DINOv3-H+) + SAM-Body4D
+**Stack:** Next.js + FastAPI + SAM 3D Body (PyTorch/MPS) + Three.js + Blender
 
 ## Goal
 
@@ -48,8 +48,14 @@ graph TD
     IR --> ASR
     SC --> ASR
     ASR --> API
+    FE --> ME[mesh-export]
+    SI --> ME
     API --> VIZ[3d-visualization]
+    ME --> VIZ
     API --> DASH[dashboard-ui]
+    VIZ --> BR[blender-render]
+    ME --> BR
+    BR --> ASR
     VIZ --> DEMO[demo-mode]
     DASH --> DEMO
     VP --> HL[historical-legends]
@@ -77,8 +83,10 @@ graph TD
 | 2 | 3 | injury-risk | fatigue, arm-slot, timing | no |
 | 3 | 1 | ai-scouting-reports | all analysis + injury-risk + statcast | yes (with api-layer) |
 | 3 | 1 | api-layer | data-model, all analysis specs, scouting | no |
-| 3 | 2 | 3d-visualization | api-layer | yes (with dashboard-ui) |
+| 2 | 1 | mesh-export | sam3d-inference, feature-extraction | yes (with analysis modules) |
+| 3 | 2 | 3d-visualization | api-layer, mesh-export | yes (with dashboard-ui) |
 | 3 | 2 | dashboard-ui | api-layer | yes (with 3d-visualization) |
+| 3 | 2 | blender-render | mesh-export, 3d-visualization | yes (with dashboard-ui) |
 | 4 | 1 | historical-legends | pipeline + feature-extraction + baseline | yes (with demo-mode) |
 | 4 | 1 | demo-mode | 3d-visualization, dashboard-ui | no |
 
@@ -88,7 +96,7 @@ graph TD
 |------|------|--------|
 | data-model | specs/data-model-spec.md | draft |
 | video-pipeline | specs/video-pipeline-spec.md | draft |
-| sam3d-inference | specs/sam3d-inference-spec.md | draft |
+| sam3d-inference | specs/sam3d-inference-spec.md | in-progress |
 | feature-extraction | specs/feature-extraction-spec.md | draft |
 | baseline-comparison | specs/baseline-comparison-spec.md | draft |
 | tipping-detection | specs/tipping-detection-spec.md | draft |
@@ -103,6 +111,8 @@ graph TD
 | injury-risk | specs/injury-risk-spec.md | draft |
 | statcast-integration | specs/statcast-integration-spec.md | draft |
 | historical-legends | specs/historical-legends-spec.md | draft |
+| mesh-export | specs/mesh-export-spec.md | draft |
+| blender-render | specs/blender-render-spec.md | draft |
 | ai-scouting-reports | specs/ai-scouting-reports-spec.md | draft |
 
 ## Project Structure (Target)
@@ -115,11 +125,15 @@ SamPlaysBaseball/
 │   │   ├── models/              # Pydantic/dataclass models
 │   │   ├── pipeline/            # Video + SAM3D + feature extraction
 │   │   ├── analysis/            # 8 analysis modules + injury risk
+│   │   ├── export/              # GLB mesh export + ground-plane alignment
 │   │   ├── data/                # Statcast integration
 │   │   ├── reports/             # AI scouting report generation
 │   │   └── api/                 # Route handlers
 │   ├── tests/
 │   └── requirements.txt
+├── scripts/
+│   ├── run_pytorch_video.py     # PyTorch/MPS video pipeline (skeleton/mesh/full modes)
+│   └── blender/                 # Blender render scripts
 ├── frontend/
 │   ├── src/
 │   │   ├── app/                 # Next.js pages

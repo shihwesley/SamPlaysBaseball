@@ -1,0 +1,120 @@
+Input: input/ohtani_full.mp4
+  Resolution: 1280x720
+  FPS: 30.0
+  Frames to process: 957
+  Person detection: per-frame
+
+Loading model from /tmp/sam3d-mlx-weights/...
+Model loaded in 1.4s
+Loading person detector...
+Detector loaded in 1.3s
+
+Processing frames...
+  Frame    0/957  1833ms/frame  ETA: 1754s
+  Frame    9/957  2090ms/frame  ETA: 1981s
+  Frame   19/957  1889ms/frame  ETA: 1772s
+  Frame   29/957  2399ms/frame  ETA: 2226s
+  Frame   39/957  2368ms/frame  ETA: 2174s
+  Frame   49/957  2610ms/frame  ETA: 2370s
+  Frame   59/957  2544ms/frame  ETA: 2285s
+  Frame   69/957  2802ms/frame  ETA: 2489s
+  Frame   79/957  2913ms/frame  ETA: 2558s
+  Frame   89/957  2664ms/frame  ETA: 2313s
+  Frame   99/957  2821ms/frame  ETA: 2420s
+  Frame  109/957  2586ms/frame  ETA: 2193s
+  Frame  119/957  2649ms/frame  ETA: 2220s
+  Frame  129/957  2659ms/frame  ETA: 2202s
+  Frame  139/957  2660ms/frame  ETA: 2176s
+  Frame  149/957  2683ms/frame  ETA: 2168s
+  Frame  159/957  2559ms/frame  ETA: 2042s
+  Frame  169/957  2302ms/frame  ETA: 1814s
+  Frame  179/957  2278ms/frame  ETA: 1772s
+  Frame  189/957  2287ms/frame  ETA: 1757s
+  Frame  199/957  2276ms/frame  ETA: 1725s
+  Frame  209/957  2281ms/frame  ETA: 1706s
+  Frame  219/957  2286ms/frame  ETA: 1687s
+  Frame  229/957  2279ms/frame  ETA: 1659s
+  Frame  239/957  2300ms/frame  ETA: 1651s
+  Frame  249/957  2263ms/frame  ETA: 1602s
+  Frame  259/957  2263ms/frame  ETA: 1580s
+  Frame  269/957  2297ms/frame  ETA: 1580s
+  Frame  279/957  2290ms/frame  ETA: 1553s
+  Frame  289/957  2267ms/frame  ETA: 1515s
+  Frame  299/957  2290ms/frame  ETA: 1507s
+  Frame  309/957  2267ms/frame  ETA: 1469s
+  Frame  319/957  2281ms/frame  ETA: 1455s
+  Frame  329/957  2255ms/frame  ETA: 1416s
+  Frame  339/957  2305ms/frame  ETA: 1424s
+  Frame  349/957  2276ms/frame  ETA: 1384s
+  Frame  359/957  2199ms/frame  ETA: 1315s
+  Frame  369/957  2276ms/frame  ETA: 1338s
+  Frame  379/957  2277ms/frame  ETA: 1316s
+  Frame  389/957  2267ms/frame  ETA: 1288s
+  Frame  399/957  2278ms/frame  ETA: 1271s
+  Frame  409/957  1968ms/frame  ETA: 1078s
+  Frame  419/957  1749ms/frame  ETA: 941s
+  Frame  429/957  1769ms/frame  ETA: 934s
+  Frame  439/957  1748ms/frame  ETA: 905s
+  Frame  449/957  1770ms/frame  ETA: 899s
+  Frame  459/957  1795ms/frame  ETA: 894s
+  Frame  469/957  1774ms/frame  ETA: 866s
+  Frame  479/957  1758ms/frame  ETA: 840s
+  Frame  489/957  1758ms/frame  ETA: 823s
+  Frame  499/957  1754ms/frame  ETA: 803s
+  Frame  509/957  1739ms/frame  ETA: 779s
+  Frame  519/957  1748ms/frame  ETA: 766s
+  Frame  529/957  1740ms/frame  ETA: 745s
+  Frame  539/957  1758ms/frame  ETA: 735s
+  Frame  549/957  1753ms/frame  ETA: 715s
+  Frame  559/957  1744ms/frame  ETA: 694s
+  Frame  569/957  1745ms/frame  ETA: 677s
+  Frame  579/957  1743ms/frame  ETA: 659s
+  Frame  589/957  1749ms/frame  ETA: 643s
+  Frame  599/957  1751ms/frame  ETA: 627s
+  Frame  609/957  1754ms/frame  ETA: 610s
+  Frame  619/957  1755ms/frame  ETA: 593s
+  Frame  629/957  1755ms/frame  ETA: 576s
+  Frame  639/957  1755ms/frame  ETA: 558s
+  Frame  649/957  1749ms/frame  ETA: 539s
+  Frame  659/957  1755ms/frame  ETA: 523s
+  Frame  669/957  1731ms/frame  ETA: 499s
+  Frame  679/957  1732ms/frame  ETA: 482s
+  Frame  689/957  1725ms/frame  ETA: 462s
+  Frame  699/957  1707ms/frame  ETA: 441s
+  Frame  709/957  1720ms/frame  ETA: 426s
+  Frame  719/957  1725ms/frame  ETA: 410s
+  Frame  729/957  1732ms/frame  ETA: 395s
+  Frame  739/957  1730ms/frame  ETA: 377s
+  Frame  749/957  1709ms/frame  ETA: 356s
+  Frame  759/957  1724ms/frame  ETA: 341s
+  Frame  769/957  1740ms/frame  ETA: 327s
+  Frame  779/957  1743ms/frame  ETA: 310s
+  Frame  789/957  1741ms/frame  ETA: 292s
+  Frame  799/957  1741ms/frame  ETA: 275s
+  Frame  809/957  1734ms/frame  ETA: 257s
+  Frame  819/957  1763ms/frame  ETA: 243s
+  Frame  829/957  1759ms/frame  ETA: 225s
+  Frame  839/957  1754ms/frame  ETA: 207s
+  Frame  849/957  1742ms/frame  ETA: 188s
+  Frame  859/957  1747ms/frame  ETA: 171s
+  Frame  869/957  1734ms/frame  ETA: 153s
+  Frame  879/957  1757ms/frame  ETA: 137s
+  Frame  889/957  1743ms/frame  ETA: 119s
+  Frame  899/957  1754ms/frame  ETA: 102s
+  Frame  909/957  1763ms/frame  ETA: 85s
+  Frame  919/957  1760ms/frame  ETA: 67s
+  Frame  929/957  1752ms/frame  ETA: 49s
+  Frame  939/957  1769ms/frame  ETA: 32s
+  Frame  949/957  1750ms/frame  ETA: 14s
+
+============================================================
+Video Processing Complete
+============================================================
+  Frames processed: 957
+  Total inference:  1930.8s
+  Median per frame: 1773ms
+  Throughput:       0.5 fps
+  Detection fails:  0/957
+  Output:           output/ohtani_full_mlx.mp4
+  Output size:      22.8 MB
+  3D keypoints:     output/ohtani_full_mlx_keypoints.npy (957 frames)
