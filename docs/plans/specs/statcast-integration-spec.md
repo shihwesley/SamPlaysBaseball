@@ -10,6 +10,9 @@ created: 2026-02-16
 
 # Statcast Integration Spec
 
+> **⚠ NEEDS REVISION (2026-04-04)**
+> `StatcastFetcher` implemented and tested per spec. New additions not in spec: `PitchDB.enrich_from_statcast()` merges Statcast CSV data into SQLite. `PlayerSearch` class handles MLB Stats API player/game lookup. Baseball Savant `play_id` linkage eliminates need for complex pitch matching on Savant-sourced data.
+
 Connects your 3D biomechanics data to Baseball Savant pitch outcomes — closing the loop from "how did the pitcher move" to "what happened to the pitch."
 
 ## Requirements

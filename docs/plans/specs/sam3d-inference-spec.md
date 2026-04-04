@@ -11,6 +11,9 @@ updated: 2026-04-03
 
 # SAM 3D Inference Spec
 
+> **⚠ NEEDS REVISION (2026-04-04)**
+> Working implementation exists at `scripts/run_pytorch_video.py` and `scripts/batch_inference.py`. Runs on MPS (M3 Max) at 1.1 fps. Spec doesn't cover batch inference, .npz storage, or PitchDB integration. Person detection uses FasterRCNN MobileNet, not spec's approach.
+
 Core 3D reconstruction: takes extracted frames, runs SAM 3D Body, outputs MHR joint + mesh data.
 
 ## Decision: PyTorch/MPS (not MLX)

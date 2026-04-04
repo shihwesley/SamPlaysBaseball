@@ -10,6 +10,9 @@ created: 2026-02-16
 
 # Data Model Spec
 
+> **⚠ NEEDS REVISION (2026-04-04)**
+> Implementation diverged from spec. New models added: `PitchRecord`, `MeshData` (in `pitch_db.py`), `PitchClip` (in `fetch_savant_clips.py`). `PitchDB` (SQLite + .npz) not covered. Existing `PitchMetadata`/`PitchData` still valid but incomplete.
+
 The foundation layer. Every other spec depends on these structures.
 
 ## Requirements

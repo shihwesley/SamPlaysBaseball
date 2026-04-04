@@ -10,6 +10,9 @@ created: 2026-02-16
 
 # Video Pipeline Spec
 
+> **⚠ NEEDS REVISION (2026-04-04)**
+> Architecture changed fundamentally. Spec describes FFmpeg frame extraction from long videos. Actual pipeline uses Baseball Savant per-pitch clips (~6s each, pre-segmented). No pitch segmentation needed. See `scripts/fetch_savant_clips.py` and `backend/app/data/player_search.py`.
+
 Handles video ingestion from all four sources: bullpen camera, broadcast, smartphone, and MiLB footage.
 
 ## Requirements
