@@ -293,19 +293,72 @@ def euler_xyz_to_rotmat(angles: mx.array) -> mx.array:
 def rotmat_to_quat(R: mx.array) -> mx.array:
     """Convert 3x3 rotation matrix to quaternion (x, y, z, w).
 
+    Uses Shepperd's method with all 4 branches for numerical stability.
+    Selects the branch with the largest diagonal element to avoid
+    division by near-zero values (critical for ~180° rotations).
+
     Args:
         R: (..., 3, 3)
     Returns:
         (..., 4) quaternion [x, y, z, w]
     """
-    # Shepperd's method
-    trace = R[..., 0, 0] + R[..., 1, 1] + R[..., 2, 2]
+    batch_shape = R.shape[:-2]
+    R = R.reshape(-1, 3, 3)
 
-    # Case: trace > 0
-    s = mx.sqrt(mx.maximum(trace + 1.0, 1e-10)) * 2  # s = 4*w
-    w = 0.25 * s
-    x = (R[..., 2, 1] - R[..., 1, 2]) / (s + 1e-10)
-    y = (R[..., 0, 2] - R[..., 2, 0]) / (s + 1e-10)
-    z = (R[..., 1, 0] - R[..., 0, 1]) / (s + 1e-10)
+    R00 = R[:, 0, 0]
+    R01 = R[:, 0, 1]
+    R02 = R[:, 0, 2]
+    R10 = R[:, 1, 0]
+    R11 = R[:, 1, 1]
+    R12 = R[:, 1, 2]
+    R20 = R[:, 2, 0]
+    R21 = R[:, 2, 1]
+    R22 = R[:, 2, 2]
 
-    return mx.stack([x, y, z, w], axis=-1)
+    trace = R00 + R11 + R22
+
+    # Shepperd's 4 candidates: pick largest of {trace, R00, R11, R22}
+    # to maximise the denominator and avoid sqrt-of-negative / div-by-zero.
+    # Branch 0: trace is largest  -> w is largest quat component
+    s0 = mx.sqrt(mx.maximum(trace + 1.0, 1e-10)) * 2.0
+    w0 = 0.25 * s0
+    x0 = (R21 - R12) / (s0 + 1e-10)
+    y0 = (R02 - R20) / (s0 + 1e-10)
+    z0 = (R10 - R01) / (s0 + 1e-10)
+    q0 = mx.stack([x0, y0, z0, w0], axis=-1)
+
+    # Branch 1: R00 is largest diagonal -> x is largest
+    s1 = mx.sqrt(mx.maximum(1.0 + R00 - R11 - R22, 1e-10)) * 2.0
+    x1 = 0.25 * s1
+    w1 = (R21 - R12) / (s1 + 1e-10)
+    y1 = (R01 + R10) / (s1 + 1e-10)
+    z1 = (R02 + R20) / (s1 + 1e-10)
+    q1 = mx.stack([x1, y1, z1, w1], axis=-1)
+
+    # Branch 2: R11 is largest diagonal -> y is largest
+    s2 = mx.sqrt(mx.maximum(1.0 - R00 + R11 - R22, 1e-10)) * 2.0
+    y2 = 0.25 * s2
+    w2 = (R02 - R20) / (s2 + 1e-10)
+    x2 = (R01 + R10) / (s2 + 1e-10)
+    z2 = (R12 + R21) / (s2 + 1e-10)
+    q2 = mx.stack([x2, y2, z2, w2], axis=-1)
+
+    # Branch 3: R22 is largest diagonal -> z is largest
+    s3 = mx.sqrt(mx.maximum(1.0 - R00 - R11 + R22, 1e-10)) * 2.0
+    z3 = 0.25 * s3
+    w3 = (R10 - R01) / (s3 + 1e-10)
+    x3 = (R02 + R20) / (s3 + 1e-10)
+    y3 = (R12 + R21) / (s3 + 1e-10)
+    q3 = mx.stack([x3, y3, z3, w3], axis=-1)
+
+    # Select best branch per element
+    candidates = mx.stack([trace, R00, R11, R22], axis=-1)  # (N, 4)
+    best = mx.argmax(candidates, axis=-1)  # (N,)
+
+    # Build result via where-chain (MLX has no advanced scatter)
+    result = q0
+    result = mx.where((best == 1)[..., None], q1, result)
+    result = mx.where((best == 2)[..., None], q2, result)
+    result = mx.where((best == 3)[..., None], q3, result)
+
+    return result.reshape(*batch_shape, 4)

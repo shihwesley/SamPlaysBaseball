@@ -90,50 +90,19 @@ class MHRBodyModel(nn.Module):
         mins = self.minmax_min  # (198,)
         maxs = self.minmax_max  # (198,)
 
-        # Gather the relevant params
-        # model_params: (B, 204)
-        B = model_params.shape[0]
         param_vals = model_params[:, indices]  # (B, 198)
-
-        # Clamp
         clamped = mx.clip(param_vals, mins[None, :], maxs[None, :])
 
-        # Scatter back: build full output
-        # Since only 198 of 204 params are clamped, copy original and overwrite
-        result_parts = []
-        for b in range(B):
-            row = model_params[b]
-            # Use numpy-style: can't do in-place, build via concatenation
-            result_parts.append(row)
-
-        # More efficient: build index array for scatter
-        # Create output as copy, then replace at indices
-        # MLX approach: use put-like operation
-        output = mx.array(model_params)
-
-        # Build a full replacement array
-        all_indices = mx.arange(204)[None, :].astype(mx.int32)  # (1, 204)
-
-        # For each of the 198 limit indices, replace in output
-        # Since arrays are immutable, do it functionally:
-        # Expand indices for gather/scatter
-        idx_expanded = indices[None, :].astype(mx.int32)  # (1, 198)
-
-        # Build mask: for each position 0..203, is it in the limit set?
-        # Pre-build a mapping array
+        # Scatter clamped values back into the full 204-dim parameter vector
         replacement = mx.zeros_like(model_params)  # (B, 204)
         mask = mx.zeros((204,))
-
-        # Scatter the clamped values
         for i in range(198):
             idx = int(indices[i].item())
             replacement = _set_column(replacement, idx, clamped[:, i])
             mask = mask.at[idx].add(1.0)
 
-        # Blend: where mask > 0, use replacement; else use original
         mask = mask[None, :]  # (1, 204)
-        output = model_params * (1 - mask) + replacement * mask
-        return output
+        return model_params * (1 - mask) + replacement * mask
 
     def _parameter_transform(self, model_params: mx.array) -> mx.array:
         """Apply parameter transform matrix.
@@ -182,8 +151,8 @@ class MHRBodyModel(nn.Module):
         # translation = joint_translation_offsets + local_trans
         trans = self.joint_translation_offsets[None, :, :] + local_trans  # (B, 127, 3)
 
-        # Scale factor (1 + local_scale, since 0 = no change)
-        scale = 1.0 + local_scale  # (B, 127, 1)
+        # Scale factor: exp(dof * ln(2)) = 2^dof (matches PyTorch JIT convention)
+        scale = mx.exp(local_scale * 0.6931471824645996)  # (B, 127, 1)
 
         # FK chain: iterate joints in parent order
         parents = self.joint_parents  # (127,)
@@ -364,6 +333,44 @@ class MHRBodyModel(nn.Module):
             )
         return verts
 
+    def _pose_features_from_joint_dofs(self, joint_dofs: mx.array) -> mx.array:
+        """Convert 889D joint DOFs to 750D pose features for correctives.
+
+        Matches PyTorch's _pose_features_from_joint_params:
+        1. Reshape to (B, 127, 7)
+        2. Skip joints 0,1 → take euler angles (B, 125, 3)
+        3. Convert to 6D rotation (first two columns of rotation matrix)
+        4. Subtract identity (elements 0 and 4)
+        5. Flatten to (B, 750)
+        """
+        B = joint_dofs.shape[0]
+        jd = joint_dofs.reshape(B, self.num_joints, 7)  # (B, 127, 7)
+        euler = jd[:, 2:, 3:6]  # (B, 125, 3) — skip root and joint 1
+
+        # Build rotation matrix columns from euler XYZ (R = Rz @ Ry @ Rx)
+        cx = mx.cos(euler[..., 0])
+        sx = mx.sin(euler[..., 0])
+        cy = mx.cos(euler[..., 1])
+        sy = mx.sin(euler[..., 1])
+        cz = mx.cos(euler[..., 2])
+        sz = mx.sin(euler[..., 2])
+
+        # 6D = [R00, R10, R20, R01, R11, R21]
+        r00 = cy * cz
+        r10 = cy * sz
+        r20 = -sy
+        r01 = -cx * sz + sx * sy * cz
+        r11 = cx * cz + sx * sy * sz
+        r21 = sx * cy
+
+        feat = mx.stack([r00, r10, r20, r01, r11, r21], axis=-1)  # (B, 125, 6)
+
+        # Subtract identity: R00 - 1 and R11 - 1
+        identity_sub = mx.array([1.0, 0.0, 0.0, 0.0, 1.0, 0.0])
+        feat = feat - identity_sub
+
+        return feat.reshape(B, -1)  # (B, 750)
+
     def _pose_correctives(
         self,
         joint_dofs: mx.array,
@@ -371,33 +378,31 @@ class MHRBodyModel(nn.Module):
     ) -> mx.array:
         """Compute pose-dependent vertex corrections.
 
-        Uses a sparse linear layer followed by a dense linear layer.
-        joint_dofs: (B, 889)
-        Returns: (B, num_verts, 3) or (B, V, 3) where V <= num_verts
+        Pipeline: joint_dofs → 6D pose features (750D) → sparse → ReLU → dense
         """
         B = joint_dofs.shape[0]
 
+        # Convert joint DOFs to 6D pose features (matches PyTorch preprocessing)
+        pose_feats = self._pose_features_from_joint_dofs(joint_dofs)  # (B, 750)
+
         # Sparse layer: indices (2, K), weights (K,)
-        # indices[0] = output index, indices[1] = input index
-        # This is a sparse matrix multiply: out = sparse_mat @ input
         out_indices = self.pc_sparse_indices[0]  # (K,)
         in_indices = self.pc_sparse_indices[1]  # (K,)
         weights = self.pc_sparse_weight  # (K,)
 
-        # Gather input values
-        input_vals = joint_dofs[:, in_indices]  # (B, K)
+        # Gather input values from pose features
+        input_vals = pose_feats[:, in_indices]  # (B, K)
         weighted = input_vals * weights[None, :]  # (B, K)
 
         # Scatter-add into sparse output
-        # Determine output size from max index
-        out_size = 3000  # matches dense layer input size
+        out_size = 3000
         sparse_out_list = []
         for b in range(B):
             col = _scatter_add_1d(weighted[b], out_indices, out_size)
             sparse_out_list.append(col)
         sparse_out = mx.stack(sparse_out_list, axis=0)  # (B, 3000)
 
-        # ReLU activation (layer 1 in the sequential is ReLU)
+        # ReLU
         sparse_out = nn.relu(sparse_out)
 
         # Dense layer: (55317, 3000) -> (B, 55317)
@@ -425,10 +430,9 @@ class MHRBodyModel(nn.Module):
             skinned_verts: (B, 18439, 3)
             skel_state: (B, 127, 8) [x, y, z, qx, qy, qz, qw, scale]
         """
-        # 1. Apply parameter limits
-        model_params = self._apply_parameter_limits(model_params)
-
-        # 2. Parameter transform: 204 -> 889 joint DOFs
+        # 1. Parameter transform: 204 -> 889 joint DOFs
+        # NOTE: parameter_limits is NOT applied during inference.
+        # The JIT model skips it entirely in its forward pass.
         joint_dofs = self._parameter_transform(model_params)
 
         # 3. Blend shapes
@@ -458,63 +462,11 @@ def _scatter_add_1d(values: mx.array, indices: mx.array, size: int) -> mx.array:
     indices: (N,) int32
     size: output size
     Returns: (size,)
+
+    Note: uses numpy for the scatter-add because MLX lacks a native scatter_add op.
+    This causes a GPU->CPU->GPU round-trip per skinning call. Functionally correct
+    but a performance bottleneck for video pipelines.
     """
-    # Use mx.zeros and add_at-like behavior
-    # MLX doesn't have scatter_add, so we do it via a one-hot multiply approach
-    # For moderate N, this is feasible. For large N, we chunk.
-
-    # Efficient approach: build sparse-to-dense via segment reduction
-    # Sort by index, then use cumulative tricks
-    # Simpler approach for correctness: use a matrix multiply
-    # one_hot: (N, size), then values @ one_hot = (size,)
-    # But N=51337 and size=18439 makes this too large.
-
-    # Instead, iterate in chunks. Since this runs on Metal, we want to avoid
-    # huge temporaries. Use a sequential accumulation.
-    # Actually, MLX supports __setitem__ on arrays? No, arrays are immutable.
-
-    # Use the approach: create index tensor and use mx.scatter
-    # mx.scatter doesn't exist. We'll do it with a loop, relying on MLX's
-    # lazy evaluation to fuse operations.
-
-    # Most practical approach: convert to numpy for this operation, or use
-    # a bincount-like trick.
-
-    # bincount approach: if indices are in [0, size), we can use:
-    # result[i] = sum of values where indices == i
-    # This is mx.bincount with weights, but MLX may not have it.
-
-    # Segment sum approach using sort:
-    sort_order = mx.argsort(indices)
-    sorted_indices = indices[sort_order]
-    sorted_values = values[sort_order]
-
-    # Use one-hot encoding in chunks to avoid memory issues
-    # For the typical case (N~50k, size~18k), we can use a matrix approach
-    # by processing in chunks of ~5000
-    out = mx.zeros((size,))
-    chunk_size = 8192
-    N = values.shape[0]
-
-    for start in range(0, N, chunk_size):
-        end = min(start + chunk_size, N)
-        chunk_idx = sorted_indices[start:end]  # (C,)
-        chunk_val = sorted_values[start:end]  # (C,)
-        C = end - start
-
-        # One-hot: (C, size) - too large? C=8192, size=18439 => ~600MB float32
-        # That's too much. Use smaller chunks or a different strategy.
-
-        # Alternative: use eye-based scatter
-        # For each unique index in chunk, sum the values
-        # This is still a loop, but over unique indices
-
-        # Actually let's just do the simple thing: accumulate via a for loop
-        # MLX compiles these into a graph, so it should be okay for eval
-        pass
-
-    # Given the constraints, the most practical approach for MLX is to
-    # convert to numpy, do scatter add, convert back.
     import numpy as np
     idx_np = np.array(indices, copy=False)
     val_np = np.array(values, copy=False)
