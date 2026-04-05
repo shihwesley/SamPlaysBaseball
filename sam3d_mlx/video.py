@@ -48,6 +48,43 @@ JOINT_COLORS = [
 ]
 
 
+def bbox_iou(a, b):
+    """IoU between two [x1,y1,x2,y2] boxes."""
+    x1 = max(a[0], b[0])
+    y1 = max(a[1], b[1])
+    x2 = min(a[2], b[2])
+    y2 = min(a[3], b[3])
+    inter = max(0, x2 - x1) * max(0, y2 - y1)
+    area_a = (a[2] - a[0]) * (a[3] - a[1])
+    area_b = (b[2] - b[0]) * (b[3] - b[1])
+    union = area_a + area_b - inter
+    return inter / union if union > 0 else 0.0
+
+
+def track_person(detections, prev_bbox, iou_threshold=0.3):
+    """Pick the detection that best matches prev_bbox by IoU.
+
+    Falls back to largest detection if no match exceeds the threshold.
+    Returns the chosen bbox or None if no detections.
+    """
+    if not detections:
+        return None
+    if prev_bbox is None:
+        return detections[0]  # first frame: largest person
+
+    best_iou = 0.0
+    best_box = None
+    for det in detections:
+        score = bbox_iou(det, prev_bbox)
+        if score > best_iou:
+            best_iou = score
+            best_box = det
+
+    if best_iou >= iou_threshold:
+        return best_box
+    return detections[0]  # lost track: fall back to largest
+
+
 def project_keypoints_perspective(keypoints_3d, camera, bbox, img_w, img_h, fov_deg=60.0):
     """Project 3D keypoints to 2D using full perspective projection.
 
@@ -132,6 +169,7 @@ def process_video(
     output_path: str,
     weights_dir: str = "/tmp/sam3d-mlx-weights/",
     bbox: list = None,
+    target_region: list = None,
     max_frames: int = None,
     skip_frames: int = 0,
 ):
@@ -142,6 +180,9 @@ def process_video(
         output_path: output annotated video path
         weights_dir: path to MLX weights
         bbox: fixed [x1,y1,x2,y2] bbox (if None, runs person detection per frame)
+        target_region: [x1,y1,x2,y2] hint for which person to track (e.g. mound area).
+            On the first frame, picks the detection with highest IoU to this region,
+            then tracks that person across subsequent frames.
         max_frames: process at most N frames
         skip_frames: skip every N frames (0 = process all)
     """
@@ -162,11 +203,14 @@ def process_video(
         total_frames = min(total_frames, max_frames)
 
     use_detection = bbox is None
+    tracked_bbox = target_region  # seed the tracker with the hint region
     print(f"Input: {input_path}")
     print(f"  Resolution: {width}x{height}")
     print(f"  FPS: {fps:.1f}")
     print(f"  Frames to process: {total_frames}")
     print(f"  Person detection: {'per-frame' if use_detection else 'fixed bbox'}")
+    if target_region:
+        print(f"  Target region: {target_region}")
 
     # Load model
     print(f"\nLoading model from {weights_dir}...")
@@ -220,22 +264,24 @@ def process_video(
 
         # Determine bbox for this frame
         if use_detection:
-            frame_bbox = None  # Let estimator auto-detect
+            from .estimator import detect_persons_cached
+            detections = detect_persons_cached(rgb)
+            frame_bbox = track_person(detections, tracked_bbox)
+            if frame_bbox is not None:
+                tracked_bbox = frame_bbox  # update tracker state
+            else:
+                frame_bbox = [0, 0, width, height]
+                detection_failures += 1
         else:
             frame_bbox = bbox
 
-        # Run inference (auto_detect=True when bbox is None)
+        # Run inference with the chosen bbox
         t0 = time.perf_counter()
-        result = estimator.predict(rgb, frame_bbox, auto_detect=use_detection)
+        result = estimator.predict(rgb, frame_bbox, auto_detect=False)
         inference_time = time.perf_counter() - t0
         frame_times.append(inference_time)
 
-        # Get the bbox that was actually used
-        used_bbox = result.get("bbox", frame_bbox or [0, 0, width, height])
-
-        # Track detection failures (fell back to full frame)
-        if use_detection and used_bbox == [0, 0, width, height]:
-            detection_failures += 1
+        used_bbox = result.get("bbox", frame_bbox)
 
         # Project 3D keypoints to 2D
         kp_3d = result["pred_keypoints_3d"]  # (70, 3)

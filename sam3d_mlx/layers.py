@@ -1,7 +1,15 @@
-"""Shared layers: SwiGLU FFN and LayerScale."""
+"""Shared layers: SwiGLU FFN, LayerScale, LayerNorm32."""
 
 import mlx.core as mx
 import mlx.nn as nn
+
+
+class LayerNorm32(nn.LayerNorm):
+    """LayerNorm that upcasts to float32 before computing, matching PyTorch."""
+
+    def __call__(self, x: mx.array) -> mx.array:
+        orig_dtype = x.dtype
+        return super().__call__(x.astype(mx.float32)).astype(orig_dtype)
 
 
 class SwiGLU(nn.Module):

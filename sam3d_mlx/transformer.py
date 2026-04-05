@@ -3,6 +3,8 @@
 import mlx.core as mx
 import mlx.nn as nn
 
+from .layers import LayerNorm32
+
 
 class DecoderAttention(nn.Module):
     """Multi-head attention with separate q/k/v input dimensions."""
@@ -70,11 +72,11 @@ class TransformerDecoderLayer(nn.Module):
         self.skip_first_pe = skip_first_pe
 
         # LaPE norms
-        self.ln_pe_1 = nn.LayerNorm(token_dims, eps=1e-6)
-        self.ln_pe_2 = nn.LayerNorm(context_dims, eps=1e-6)
+        self.ln_pe_1 = LayerNorm32(token_dims, eps=1e-6)
+        self.ln_pe_2 = LayerNorm32(context_dims, eps=1e-6)
 
         # Self-attention
-        self.ln1 = nn.LayerNorm(token_dims, eps=1e-6)
+        self.ln1 = LayerNorm32(token_dims, eps=1e-6)
         self.self_attn = DecoderAttention(
             embed_dims=embed_dims,
             num_heads=num_heads,
@@ -84,8 +86,8 @@ class TransformerDecoderLayer(nn.Module):
         )
 
         # Cross-attention
-        self.ln2_1 = nn.LayerNorm(token_dims, eps=1e-6)
-        self.ln2_2 = nn.LayerNorm(context_dims, eps=1e-6)
+        self.ln2_1 = LayerNorm32(token_dims, eps=1e-6)
+        self.ln2_2 = LayerNorm32(context_dims, eps=1e-6)
         self.cross_attn = DecoderAttention(
             embed_dims=embed_dims,
             num_heads=num_heads,
@@ -95,7 +97,7 @@ class TransformerDecoderLayer(nn.Module):
         )
 
         # FFN
-        self.ln3 = nn.LayerNorm(token_dims, eps=1e-6)
+        self.ln3 = LayerNorm32(token_dims, eps=1e-6)
         self.ffn = DecoderFFN(token_dims, mlp_dims)
 
     def __call__(

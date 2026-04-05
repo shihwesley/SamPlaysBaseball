@@ -1,5 +1,7 @@
 """MHR pose head: proj FFN -> parameter extraction -> body model."""
 
+import numpy as np
+
 import mlx.core as mx
 import mlx.nn as nn
 
@@ -285,7 +287,6 @@ def _zero_at_indices(arr: mx.array, indices: mx.array) -> mx.array:
     D = arr.shape[1]
     mask = mx.ones((D,))
     # Build mask with zeros at specified indices
-    import numpy as np
     mask_np = np.ones(D, dtype=np.float32)
     idx_np = np.array(indices, copy=False)
     mask_np[idx_np] = 0.0
@@ -313,8 +314,6 @@ def _scatter_set(
     Functional replacement for arr.at[:, indices].set(values).
     Works by building a full replacement with masking.
     """
-    import numpy as np
-
     B, D = arr.shape
     _, K = values.shape
 

@@ -3,6 +3,7 @@
 import mlx.core as mx
 import mlx.nn as nn
 
+from .layers import LayerNorm32
 from .transformer import TransformerDecoderLayer
 
 
@@ -38,7 +39,7 @@ class PromptableDecoder(nn.Module):
             )
             for i in range(depth)
         ]
-        self.norm_final = nn.LayerNorm(dims, eps=1e-6)
+        self.norm_final = LayerNorm32(dims, eps=1e-6)
 
     def __call__(
         self,
