@@ -262,10 +262,10 @@ class SAM3DBody(nn.Module):
         """
         B, H_p, W_p, C = image_features.shape
 
-        # Downsample rays to patch resolution via stride sampling
+        # Downsample rays to patch resolution via area-averaging (matches antialias)
         # Image is (512, 384), patches are (32, 24) = 16x downsample
         patch_size = self.config.patch_size
-        rays_down = rays[:, ::patch_size, ::patch_size, :]  # (B, H_p, W_p, 2)
+        rays_down = nn.AvgPool2d(kernel_size=patch_size, stride=patch_size)(rays)  # (B, H_p, W_p, 2)
 
         # Append z=1 to get 3D ray directions
         ones = mx.ones((*rays_down.shape[:-1], 1))
@@ -286,14 +286,14 @@ class SAM3DBody(nn.Module):
 
         return result
 
-    def _perspective_projection(self, kp3d, pred_cam, bbox, img_size, fov_deg=60.0):
+    def _perspective_projection(self, kp3d, pred_cam, bbox, img_size, cam_int=None):
         """Project 3D keypoints to 2D crop-normalized coordinates.
 
         kp3d: (B, N, 3) 3D keypoints
         pred_cam: (B, 3) camera params [scale, tx, ty]
         bbox: [x1, y1, x2, y2]
         img_size: (img_h, img_w)
-        fov_deg: field of view
+        cam_int: (3, 3) camera intrinsics, or None for default
 
         Returns: (B, N, 2) keypoints in [-1, 1] range (grid_sample compatible)
         """
@@ -305,7 +305,10 @@ class SAM3DBody(nn.Module):
         tx = pred_cam[:, 1:2]
         ty = -pred_cam[:, 2:3]
 
-        focal_length = img_h / (2 * math.tan(math.radians(fov_deg / 2)))
+        if cam_int is not None:
+            focal_length = float(cam_int[0, 0])
+        else:
+            focal_length = math.sqrt(img_h**2 + img_w**2)
 
         bbox_center_x = (bbox[0] + bbox[2]) / 2
         bbox_center_y = (bbox[1] + bbox[3]) / 2
@@ -386,8 +389,8 @@ class SAM3DBody(nn.Module):
         if cliff_condition is None:
             cliff_condition = mx.zeros((B, 3))
         init_input = mx.concatenate([
-            init_estimate,
             cliff_condition,
+            init_estimate,
         ], axis=1)  # (B, 525)
         init_token = self.init_to_token_mhr(init_input.reshape(B, 1, -1))  # (B, 1, 1024)
 
@@ -462,7 +465,7 @@ class SAM3DBody(nn.Module):
             if bbox is not None and img_size is not None:
                 # Project 3D keypoints to 2D crop coordinates
                 kp2d_norm = self._perspective_projection(
-                    kp3d, pred_cam, bbox, img_size
+                    kp3d, pred_cam, bbox, img_size, cam_int=cam_int
                 )  # (B, 70, 2)
 
                 # New position embeddings from predicted 2D coords
@@ -488,11 +491,8 @@ class SAM3DBody(nn.Module):
                 ], axis=1)
 
             # --- Update 3D keypoint tokens ---
-            # Pelvis-normalize: subtract midpoint of pelvis joints
-            # Pelvis joints are typically indices 1 and 2 in the joint set
-            joint_coords = body_output["pred_joint_coords"]  # (B, 127, 3)
-            # Use root joint (index 0) as pelvis reference
-            pelvis = joint_coords[:, 0:1, :]  # (B, 1, 3)
+            # Pelvis-normalize: average of left_hip (9) and right_hip (10)
+            pelvis = (kp3d[:, 9:10, :] + kp3d[:, 10:11, :]) / 2  # (B, 1, 3)
             kp3d_centered = kp3d - pelvis  # (B, 70, 3)
 
             # New position embeddings from predicted 3D coords
@@ -616,3 +616,49 @@ class SAM3DBody(nn.Module):
 
         # Load MHR body model weights separately (they need key remapping)
         self.head_pose.load_all_weights(str(safetensors_path))
+
+    @staticmethod
+    def sanitize(weights):
+        """Remap weight keys for mlx-vlm compatibility.
+
+        Handles: hand module filtering, bare param renaming, backbone
+        bias_mask/k_proj.bias removal, mhr prefix handling.
+        """
+        sanitized = {}
+
+        hand_prefixes = (
+            "decoder_hand.", "head_pose_hand.", "head_camera_hand.",
+            "init_pose_hand.", "init_camera_hand.",
+            "init_to_token_mhr_hand.", "prev_to_token_mhr_hand.",
+            "keypoint_embedding_hand.", "keypoint3d_embedding_hand.",
+            "keypoint_posemb_linear_hand.", "keypoint3d_posemb_linear_hand.",
+            "keypoint_feat_linear_hand.", "ray_cond_emb_hand.",
+        )
+
+        bare_param_keys = {
+            "init_pose.weight": "init_pose",
+            "init_camera.weight": "init_camera",
+            "keypoint_embedding.weight": "keypoint_embedding",
+            "keypoint3d_embedding.weight": "keypoint3d_embedding",
+            "hand_box_embedding.weight": "hand_box_embedding",
+        }
+
+        skip_prefixes = ("prompt_encoder.mask_downscaling.",)
+
+        for key, tensor in weights.items():
+            if any(key.startswith(p) for p in hand_prefixes):
+                continue
+            if any(key.startswith(p) for p in skip_prefixes):
+                continue
+            if key.startswith("backbone.") and ("bias_mask" in key or "k_proj.bias" in key):
+                continue
+            if key in bare_param_keys:
+                sanitized[bare_param_keys[key]] = tensor
+                continue
+            sanitized[key] = tensor
+
+        return sanitized
+
+
+# mlx-vlm convention alias
+Model = SAM3DBody

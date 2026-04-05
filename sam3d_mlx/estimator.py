@@ -121,12 +121,13 @@ def detect_persons_cached(image_rgb, threshold=0.5):
     return boxes.tolist()
 
 
-def make_default_intrinsics(img_h, img_w, fov_deg=60.0):
-    """Build a default camera intrinsic matrix from image dimensions and FOV.
+def make_default_intrinsics(img_h, img_w):
+    """Build a default camera intrinsic matrix from image dimensions.
 
+    Uses image diagonal as focal length, matching PyTorch's default.
     Returns: (3, 3) float32 numpy array
     """
-    focal = img_h / (2 * math.tan(math.radians(fov_deg / 2)))
+    focal = math.sqrt(img_h**2 + img_w**2)
     return np.array([
         [focal, 0, img_w / 2],
         [0, focal, img_h / 2],
@@ -206,8 +207,9 @@ class SAM3DBodyEstimator:
         )
         image_mx = mx.array(processed)
 
-        # CLIFF condition
-        cliff = get_cliff_condition(bbox, (h, w))
+        # CLIFF condition (normalize by focal length, not image dims)
+        focal_length = float(cam_int[0, 0])
+        cliff = get_cliff_condition(bbox, (h, w), focal_length=focal_length)
         cliff_mx = mx.array(cliff[None])  # (1, 3)
 
         # Camera intrinsics as MLX array
@@ -222,11 +224,13 @@ class SAM3DBodyEstimator:
             cam_int=cam_int_mx,
         )
 
-        # Evaluate lazily computed arrays
-        mx.eval(body_output["pred_vertices"])
-        mx.eval(body_output["pred_keypoints_3d"])
-        mx.eval(body_output["pred_joint_coords"])
-        mx.eval(pred_cam)
+        # Evaluate lazily computed arrays (batch for efficiency)
+        mx.eval(
+            body_output["pred_vertices"],
+            body_output["pred_keypoints_3d"],
+            body_output["pred_joint_coords"],
+            pred_cam,
+        )
 
         return {
             "pred_vertices": np.array(body_output["pred_vertices"][0]),

@@ -185,31 +185,38 @@ def prepare_image(
 def get_cliff_condition(
     bbox: list | np.ndarray,
     image_shape: tuple[int, int],
+    focal_length: float | None = None,
 ) -> np.ndarray:
     """Compute CLIFF conditioning vector from bbox and image shape.
 
-    CLIFF condition encodes the crop's position relative to the full image,
-    helping the model infer absolute camera parameters.
+    Matches PyTorch: condition = [(cx - W/2) / f, (cy - H/2) / f, bbox_scale / f]
 
     Args:
         bbox: [x1, y1, x2, y2]
         image_shape: (H, W) of original image
+        focal_length: scalar focal length. If None, estimated from image height
+            assuming 60° vertical FOV.
 
     Returns:
-        (3,) float32: [cx_norm, cy_norm, crop_ratio]
+        (3,) float32: [cx_norm, cy_norm, scale_norm]
     """
+    import math
+
     bbox = np.array(bbox, dtype=np.float32)
     H, W = image_shape
+
+    if focal_length is None:
+        # PyTorch default: image diagonal
+        focal_length = math.sqrt(H**2 + W**2)
+
     cx = (bbox[0] + bbox[2]) / 2.0
     cy = (bbox[1] + bbox[3]) / 2.0
     bw = bbox[2] - bbox[0]
-    bh = bbox[3] - bbox[1]
-    crop_size = max(bw, bh) * 1.2
+    # PyTorch uses bbox_width * padding (1.25), not max(w,h) * 1.2
+    bbox_scale = bw * 1.25
 
-    # Normalize center to [-1, 1] range
-    cx_norm = (cx - W / 2.0) / (W / 2.0)
-    cy_norm = (cy - H / 2.0) / (H / 2.0)
-    # Crop ratio
-    crop_ratio = crop_size / max(H, W)
+    cx_norm = (cx - W / 2.0) / focal_length
+    cy_norm = (cy - H / 2.0) / focal_length
+    scale_norm = bbox_scale / focal_length
 
-    return np.array([cx_norm, cy_norm, crop_ratio], dtype=np.float32)
+    return np.array([cx_norm, cy_norm, scale_norm], dtype=np.float32)
