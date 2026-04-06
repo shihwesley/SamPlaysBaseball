@@ -97,9 +97,16 @@ graph TD
 | Statcast correlation | Closes the loop from mechanics to outcomes. "Your slider doesn't slide because..." |
 | Historical legends | Only possible with single-camera tools. KinaTrax didn't exist in 1995. Great demo conversation starter. |
 | AI scouting reports | LLM-generated one-pagers in scout language. Bridges data to decisions. |
+| Gemma 4 E4B for all LLM tasks | Local multimodal model via mlx-vlm. Zero API cost, data stays on machine, ~16GB fits alongside SAM 3D Body on 128GB M3 Max. Vision encoder (SigLIP2) lets it see rendered frames of the delivery. |
+| Local-first query parsing | Gemma4 does NL→JSON extraction for the query parser (text-only, no vision). Anthropic Claude as cloud fallback only. |
+| Provider-agnostic LLM interface | DiagnosticProvider ABC + ParserBackend ABC. Swap between Gemma4/Claude/OpenAI/Ollama with one argument. |
+| War Room dashboard design | Dense 3-column layout (40% viewer / 35% report / 25% stats) with Lab Notebook spacing. JetBrains Mono for data, dark surfaces (#0a0a0a → #111 → #1a1a1a). Everything visible without scrolling at 1440p. |
+| Progress token polling | When MLX inference needed for uncached pitches, return a token and poll. Keeps HTTP fast while GPU works. |
 
 ## Visual/Browser Findings
--
+- War Room design direction approved (2026-04-05): dense, monospace data, dark theme, blue/orange accents
+- Lab Notebook spacing borrowed: generous padding (16-20px), 1.7 line-height for report prose
+- Mobile deferred — desktop-first tool for MLB analysts on 1440p+ monitors
 
 ## CEO Review Findings (2026-04-03)
 

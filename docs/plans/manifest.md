@@ -99,6 +99,7 @@ graph TD
 | 3 | 1 | api-layer | data-model, all analysis, scouting | **implemented** |
 | 3 | 2 | 3d-visualization | api-layer, mesh-export | **implemented** |
 | 3 | 2 | dashboard-ui | api-layer | **implemented** |
+| 3 | 3 | mechanics-diagnostic | ai-scouting-reports, 3d-viz, dashboard-ui | **implemented** |
 | 3 | 2 | blender-render | mesh-export, 3d-visualization | draft |
 | 4 | 1 | historical-legends | pipeline + feature-extraction + baseline | draft |
 | 4 | 1 | demo-mode | 3d-visualization, dashboard-ui | draft |
@@ -141,6 +142,7 @@ Note: MLX port is fully functional after 3 bug fixes (2026-04-05). Runs at ~490m
 | blender-render | specs/blender-render-spec.md | draft | |
 | ai-scouting-reports | specs/ai-scouting-reports-spec.md | **implemented** | LLM reports + PDF + templates + diagnostic engine |
 | historical-legends | specs/historical-legends-spec.md | draft | |
+| mechanics-diagnostic | docs/plans/2026-04-05-mechanics-diagnostic-design.md | **implemented** | Query parser + orchestrator + API + dashboard + Gemma4 local LLM |
 | demo-mode | specs/demo-mode-spec.md | draft | |
 | mlx-weight-converter | specs/mlx-weight-converter-spec.md | **implemented** | safetensors conversion working |
 | mlx-backbone | specs/mlx-backbone-spec.md | **implemented** | ViT backbone ported |
@@ -161,6 +163,12 @@ Note: MLX port is fully functional after 3 bug fixes (2026-04-05). Runs at ~490m
 | Statcast fetcher | backend/app/data/statcast.py | working — pybaseball + CSV + simple key matching |
 | Correlation engine | backend/app/analysis/correlation.py | working — Pearson/Spearman + Ridge/LASSO |
 | Data models | backend/app/models/pitch.py | working — PitchMetadata, PitchData |
+| Query parser | backend/app/query/parser.py | working — NL→JSON via Gemma4 (local) or Claude (cloud) |
+| Query orchestrator | backend/app/query/orchestrator.py | working — parse→fetch→compare→report→GLB pipeline |
+| Query API | backend/app/api/query.py | working — POST /api/query + GET /api/query/{token}/status |
+| Analyze dashboard | frontend/src/app/analyze/page.tsx | working — 3-col War Room layout + 3D viewer + report |
+| Dashboard components | frontend/src/components/ui/{QueryBar,ReportPanel,MetricsPanel,StatcastPanel}.tsx | working |
+| 3D interaction | frontend/src/components/three/{JointSelector,MetricGraph,SpeedControl,FieldGeometry}.tsx | working |
 
 ## Project Structure (Actual)
 
@@ -169,33 +177,75 @@ SamPlaysBaseball/
 ├── backend/
 │   ├── app/
 │   │   ├── main.py              # FastAPI entry
-│   │   ├── models/
-│   │   │   └── pitch.py         # PitchMetadata, PitchData
+│   │   ├── models/              # PitchMetadata, PitchData, StorageLayer, Baseline
 │   │   ├── data/
 │   │   │   ├── statcast.py      # StatcastFetcher (pybaseball + CSV)
 │   │   │   ├── pitch_db.py      # PitchDB (SQLite + .npz storage)
 │   │   │   └── player_search.py # MLB Stats API player search
 │   │   ├── analysis/
-│   │   │   └── correlation.py   # CorrelationEngine
-│   │   ├── pipeline/            # (planned)
-│   │   ├── export/              # (planned)
-│   │   ├── reports/             # (planned)
-│   │   └── api/                 # (planned)
-│   ├── tests/
-│   └── requirements.txt
+│   │   │   ├── compare_deliveries.py  # Biomechanical delivery comparison
+│   │   │   ├── correlation.py   # CorrelationEngine (Pearson/Spearman/Ridge)
+│   │   │   ├── fatigue.py       # Fatigue tracking + changepoint detection
+│   │   │   ├── tipping.py       # Pitch tipping detection
+│   │   │   ├── command.py       # Command analysis
+│   │   │   ├── arm_slot.py      # Arm slot drift tracking
+│   │   │   ├── timing.py        # Phase timing + energy decomposition
+│   │   │   └── injury_risk.py   # Composite risk score
+│   │   ├── pipeline/
+│   │   │   ├── features.py      # BiomechFeatures + FeatureExtractor
+│   │   │   ├── phases.py        # Pitch phase detection (FP/MER/REL)
+│   │   │   ├── kinetics.py      # Kinetic chain timing
+│   │   │   ├── angles.py        # Joint angle computation
+│   │   │   └── alignment.py     # Phase-normalized time axis
+│   │   ├── export/
+│   │   │   ├── glb.py           # GLB exporter
+│   │   │   ├── comparison.py    # Comparison GLB builder
+│   │   │   ├── ground_plane.py  # Ground alignment
+│   │   │   └── mound.py         # Mound geometry
+│   │   ├── reports/
+│   │   │   ├── diagnostic.py    # DiagnosticEngine (Gemma4/Claude/OpenAI)
+│   │   │   ├── norms.py         # Normative biomechanical ranges
+│   │   │   ├── llm.py           # LLMReportGenerator (Claude API)
+│   │   │   ├── generator.py     # ReportGenerator (assembles scouting reports)
+│   │   │   ├── templates.py     # Section templates
+│   │   │   └── pdf.py           # PDF export
+│   │   ├── query/
+│   │   │   ├── parser.py        # NL→JSON via Gemma4 or Claude
+│   │   │   └── orchestrator.py  # parse→fetch→compare→report→GLB pipeline
+│   │   └── api/
+│   │       ├── routes.py        # Central router
+│   │       ├── query.py         # POST /api/query + polling
+│   │       ├── analysis.py      # Analysis endpoints
+│   │       ├── compare.py       # Pitch comparison
+│   │       ├── pitchers.py      # Pitcher CRUD
+│   │       ├── reports.py       # Report endpoints
+│   │       └── upload.py        # Video upload + processing
+│   └── tests/                   # 263 tests (pytest)
+├── sam3d_mlx/                   # MLX port of SAM 3D Body (~490ms/frame)
 ├── scripts/
 │   ├── run_pytorch_video.py     # SAM 3D Body PyTorch/MPS inference
 │   ├── fetch_savant_clips.py    # Baseball Savant per-pitch clip downloader
 │   ├── batch_inference.py       # Batch SAM 3D Body → mesh/skeleton storage
 │   └── blender/                 # Blender render scripts
+├── frontend/
+│   ├── src/app/
+│   │   ├── layout.tsx           # Root layout (Inter + JetBrains Mono)
+│   │   ├── page.tsx             # Pitchers list
+│   │   ├── analyze/page.tsx     # Mechanics diagnostic (War Room layout)
+│   │   ├── compare/page.tsx     # Pitch comparison
+│   │   └── upload/page.tsx      # Video upload
+│   ├── src/components/
+│   │   ├── ui/                  # QueryBar, ReportPanel, MetricsPanel, StatcastPanel, Sidebar
+│   │   ├── three/               # MoundScene, PitcherMesh, GhostOverlay, TimelineScrubber,
+│   │   │                        # CameraPresets, SkeletonOverlay, DeviationColoring,
+│   │   │                        # SplitSync, Stroboscope, JointSelector, MetricGraph,
+│   │   │                        # SpeedControl, FieldGeometry
+│   │   └── charts/              # AngleTimeSeries, FatigueCurve, KineticChain, etc.
+│   └── src/lib/                 # api.ts, mesh-loader.ts
 ├── data/
 │   ├── clips/{game_pk}/         # Downloaded per-pitch video clips
 │   ├── meshes/{game_pk}/        # .npz mesh/skeleton files
 │   └── pitches.db               # SQLite pitch database
-├── input/                       # Raw input videos
-├── output/                      # Inference output videos
-├── frontend/                    # (planned)
-├── docs/
-│   └── plans/                   # Planning directory
+├── docs/plans/                  # Design docs + specs + progress
 └── CLAUDE.md
 ```

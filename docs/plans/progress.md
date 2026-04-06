@@ -1,5 +1,51 @@
 # Progress Log
 
+## Session: 2026-04-05 (continued)
+
+### Milestones
+- **Mechanics diagnostic fully implemented:** All 6 steps from the design doc done
+- **Query parser:** NL → AnalysisQuery via local Gemma 4 E4B (mlx-vlm) or Claude (fallback)
+- **Orchestrator pipeline:** parse → resolve pitcher → fetch pitches → compare deliveries → Statcast aggregation → diagnostic report → GLB export
+- **API endpoints:** POST /api/query (submit) + GET /api/query/{token}/status (poll)
+- **Analyze dashboard:** War Room design, 3-column layout (40% viewer / 35% report / 25% stats)
+- **3D interaction components:** JointSelector (raycasting click), MetricGraph (Plotly time-series), SpeedControl, FieldGeometry
+- **Design direction approved:** War Room base + Lab Notebook spaciousness (via /design-shotgun)
+- **QA passed:** 263 backend tests, 0 failures. Browser QA on all 4 pages. 2 bugs fixed.
+- **Fully local LLM:** Both query parser and diagnostic engine run on Gemma 4 E4B via mlx-vlm. Zero API costs.
+
+### What was built
+| Component | File | Commit |
+|-----------|------|--------|
+| Query parser (local Gemma4) | backend/app/query/parser.py | d339a38 |
+| Query orchestrator | backend/app/query/orchestrator.py | c9b7e2b |
+| Query API endpoints | backend/app/api/query.py | c9b7e2b |
+| Analyze dashboard page | frontend/src/app/analyze/page.tsx | a367a6b |
+| QueryBar component | frontend/src/components/ui/QueryBar.tsx | a367a6b |
+| ReportPanel component | frontend/src/components/ui/ReportPanel.tsx | a367a6b |
+| MetricsPanel component | frontend/src/components/ui/MetricsPanel.tsx | a367a6b |
+| StatcastPanel component | frontend/src/components/ui/StatcastPanel.tsx | a367a6b |
+| JointSelector component | frontend/src/components/three/JointSelector.tsx | e262828 |
+| MetricGraph component | frontend/src/components/three/MetricGraph.tsx | e262828 |
+| SpeedControl component | frontend/src/components/three/SpeedControl.tsx | e262828 |
+| FieldGeometry component | frontend/src/components/three/FieldGeometry.tsx | 48058f7 |
+| War Room design styling | globals.css, layout.tsx, all panels | 8daa960 |
+| QA fix: API key handling | backend/app/api/query.py | f66bed7 |
+| QA fix: datetime deprecation | backend/app/api/upload.py | c0a014a |
+
+### Validation
+- 263 backend tests passing (pytest, 3.5s)
+- Frontend builds with 0 type errors (tsc --noEmit)
+- Browser QA: all 4 pages render correctly, query flow works end-to-end (error handling verified)
+- Health score: 82/100
+
+### Decisions
+- War Room design direction with Lab Notebook spacing (approved via design-shotgun)
+- Gemma 4 E4B is the default LLM for both parsing AND diagnostics (fully local)
+- Claude API is cloud fallback only (requires ANTHROPIC_API_KEY env var)
+- Mobile responsiveness deferred (desktop-first tool for MLB analysts)
+
+---
+
 ## Session: 2026-04-05
 
 ### Milestones
