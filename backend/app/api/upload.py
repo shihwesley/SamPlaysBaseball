@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import re
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, BackgroundTasks, Depends, File, Form, HTTPException, UploadFile
@@ -26,11 +26,11 @@ async def _process_video_stub(job_id: str, job_store: dict[str, JobStatus]) -> N
     job = job_store[job_id]
     job.status = "processing"
     job.progress = 10
-    job.updated_at = datetime.utcnow()
+    job.updated_at = datetime.now(tz=timezone.utc)
     await asyncio.sleep(0.1)
     job.status = "completed"
     job.progress = 100
-    job.updated_at = datetime.utcnow()
+    job.updated_at = datetime.now(tz=timezone.utc)
 
 
 @router.post("/api/upload", response_model=UploadResponse, status_code=202)
@@ -54,7 +54,7 @@ async def upload_video(
         )
 
     job_id = str(uuid.uuid4())
-    now = datetime.utcnow()
+    now = datetime.now(tz=timezone.utc)
 
     # Save video file
     video_dir = _VIDEO_DIR / pitcher_id
