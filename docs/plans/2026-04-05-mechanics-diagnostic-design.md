@@ -154,6 +154,30 @@ Frontend polls `GET /api/query/{token}/status` until status flips to `"complete"
 
 ## LLM Diagnostic Report
 
+### Model: Gemma 4 E4B (local, multimodal)
+
+Runs locally on Apple Silicon via mlx-vlm. 4B parameters, ~16GB memory. The key advantage: SigLIP2 vision encoder means the model can *see* rendered frames of the delivery, not just read numbers. Zero API cost, zero latency to external services, all data stays on the machine.
+
+```
+Model: google/gemma-4-e4b-it
+Runtime: mlx-vlm (Apple Silicon native)
+Memory: ~16GB (alongside SAM 3D Body model on M3 Max 128GB)
+Capabilities: vision (SigLIP2) + text + thinking mode
+```
+
+Fallback: Claude API via existing LLMReportGenerator for higher-quality prose when needed. The interface is the same — both produce DiagnosticReport.
+
+### Visual input (new — enabled by multimodal)
+
+Before calling the LLM, render 3-6 images from the 3D scene:
+
+1. **Key frame triptych** — Side-by-side renders of foot plant, MER, and release for pitch A. Same for pitch B. Two rows, three columns. Annotated with frame numbers and phase labels.
+2. **Ghost overlay at MER** — Both pitches overlaid (solid + transparent) at the moment of maximum external rotation. Catcher's view. This is where arm slot differences are most visible.
+3. **Ghost overlay at release** — Same overlay at ball release. Shows release point and trunk position differences.
+4. **Skeleton trajectory** — Top-down view of the wrist path through space for both pitches. Colored trails (blue = pitch A, orange = pitch B). Shows arm path divergence.
+
+These renders come from the existing Three.js components (MoundScene, PitcherMesh, GhostOverlay, SkeletonOverlay) via server-side rendering or headless screenshot. For MVP, use matplotlib or trimesh to render static frames from the joint arrays — no browser needed.
+
 ### Role
 
 The LLM acts as a 30-year veteran pitching mechanics analyst. Not a chatbot — a colleague writing an internal assessment. No hedging, no filler, specific numbers, scout terminology.
@@ -166,7 +190,13 @@ experience across MLB player development. You have worked with dozens
 of pitchers from rookie ball to the majors. You are writing an internal
 assessment for the pitching coach and player development staff.
 
+You are looking at rendered 3D body reconstructions of the pitcher's
+delivery. The images show the body mesh and skeleton at key phases
+(foot plant, MER, release). When a ghost overlay is shown, the solid
+body is the primary pitch and the transparent body is the comparison.
+
 Rules:
+- Describe what you SEE in the images first, then connect to the numbers
 - Lead with what changed mechanically and why it matters for performance
 - Connect mechanical changes to the Statcast outcomes the analyst sees
 - Reference specific numbers — never generalize
@@ -182,7 +212,17 @@ Rules:
   findings directly as observations
 ```
 
-### Context dict (passed as user message)
+### Context (multimodal message: images + text)
+
+The prompt combines rendered images with a structured text block:
+
+**Images** (3-6, passed as image tokens):
+- Key frame triptych (pitch A and pitch B)
+- Ghost overlay at MER
+- Ghost overlay at release
+- Wrist trajectory comparison (optional)
+
+**Text block:**
 
 ```python
 {
@@ -341,11 +381,14 @@ Dashboard (3D viewer + report + metrics + Statcast)
 | frontend/src/components/three/SpeedControl.tsx | Playback speed buttons |
 | frontend/src/components/three/FieldGeometry.tsx | Static baseball field geometry |
 
+| backend/app/reports/renderer.py | Render key frame images from joint arrays (matplotlib/trimesh, no browser needed) |
+| backend/app/reports/vlm.py | Gemma 4 E4B integration via mlx-vlm — multimodal diagnostic generation |
+
 ### Modified files
 
 | File | Change |
 |------|--------|
-| backend/app/reports/llm.py | Add generate_diagnostic() method with mechanics-specific prompt |
+| backend/app/reports/llm.py | Add generate_diagnostic() method, keep as Claude API fallback |
 | backend/app/api/routes.py | Register /api/query routes |
 | frontend/src/app/layout.tsx | Add /analyze route to nav |
 
