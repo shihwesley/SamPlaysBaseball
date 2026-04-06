@@ -55,3 +55,57 @@ export async function uploadVideo(
 
 export const getExportUrl = (pitchId: string): string =>
   API_BASE + '/api/export/glb/' + pitchId
+
+// ---------------------------------------------------------------------------
+// Query / Diagnostic API
+// ---------------------------------------------------------------------------
+
+export type DiagnosticReport = {
+  narrative: string
+  recommendations: string[]
+  risk_flags: string[]
+  confidence: 'high' | 'moderate' | 'low'
+  pitches_analyzed: number
+}
+
+export type ViewerInfo = {
+  glb_url: string
+  phase_markers: Record<string, number>
+  total_frames: number
+}
+
+export type QueryResponse = {
+  status: 'complete'
+  report: DiagnosticReport
+  statcast: {
+    group_a: Record<string, number>
+    group_b: Record<string, number>
+  }
+  viewer: ViewerInfo
+  query: {
+    raw_text?: string
+    parsed?: Record<string, unknown>
+    pitches_used?: string[]
+  }
+}
+
+export type ProgressResponse = {
+  status: 'processing'
+  token: string
+  pitches_needing_inference: string[]
+  total_pitches: number
+  eta_seconds: number | null
+}
+
+export type QueryResult = QueryResponse | ProgressResponse
+
+export const submitQuery = (text: string, gameDate?: string) =>
+  apiFetch<QueryResult>('/api/query', {
+    method: 'POST',
+    body: JSON.stringify({ text, game_date: gameDate ?? null }),
+  })
+
+export const pollQueryStatus = (token: string) =>
+  apiFetch<{ status: string; result?: QueryResponse; progress?: Record<string, unknown> }>(
+    '/api/query/' + token + '/status',
+  )
