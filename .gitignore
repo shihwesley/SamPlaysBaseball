@@ -39,3 +39,7 @@ output/*.log
 
 # Large binaries
 *.npz
+data/
+frontend/next-env.d.ts
+frontend/tsconfig.tsbuildinfo
+frontend/node_modules/
