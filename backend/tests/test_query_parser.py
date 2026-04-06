@@ -8,7 +8,14 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 import pytest
 
-from backend.app.query.parser import AnalysisQuery, QueryParser, _parse_json_response
+from backend.app.query.parser import (
+    AnalysisQuery,
+    AnthropicBackend,
+    Gemma4Backend,
+    ParserBackend,
+    QueryParser,
+    _parse_json_response,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -125,15 +132,42 @@ class TestParseJsonResponse:
         with pytest.raises(json.JSONDecodeError):
             _parse_json_response("not json at all")
 
+    def test_strips_thinking_tags(self):
+        raw = '<think>Let me analyze this query...</think>\n' + json.dumps({
+            "pitcher_name": "Ohtani",
+            "pitch_types": ["FF"],
+            "comparison_mode": "baseline",
+        })
+        q = _parse_json_response(raw)
+        assert q.pitcher_name == "Ohtani"
+        assert q.comparison_mode == "baseline"
+
 
 # ---------------------------------------------------------------------------
-# QueryParser with mocked Anthropic
+# Mock backend for testing
+# ---------------------------------------------------------------------------
+
+class MockBackend(ParserBackend):
+    name = "mock"
+
+    def __init__(self, response: str):
+        self._response = response
+        self.last_system = None
+        self.last_user = None
+
+    def complete(self, system: str, user: str, max_tokens: int = 300) -> str:
+        self.last_system = system
+        self.last_user = user
+        return self._response
+
+
+# ---------------------------------------------------------------------------
+# QueryParser with mock backend
 # ---------------------------------------------------------------------------
 
 class TestQueryParser:
-    def test_parse_calls_api(self):
-        mock_response = MagicMock()
-        mock_response.content = [MagicMock(text=json.dumps({
+    def test_parse_returns_query(self):
+        backend = MockBackend(json.dumps({
             "pitcher_name": "Ohtani",
             "pitch_types": ["FF"],
             "comparison_mode": "time",
@@ -141,41 +175,59 @@ class TestQueryParser:
             "inning_range_b": [5, 6],
             "game_date": None,
             "concern": "fatigue",
-        }))]
+        }))
 
-        with patch("backend.app.query.parser.Anthropic") as MockCls:
-            mock_client = MagicMock()
-            mock_client.messages.create.return_value = mock_response
-            MockCls.return_value = mock_client
+        parser = QueryParser(backend)
+        q = parser.parse("Compare Ohtani's 1st inning fastballs to 5th inning")
 
-            parser = QueryParser(api_key="test")
-            q = parser.parse("Compare Ohtani's 1st inning fastballs to 5th inning")
+        assert q.pitcher_name == "Ohtani"
+        assert q.comparison_mode == "time"
+        assert q.concern == "fatigue"
 
-            assert q.pitcher_name == "Ohtani"
-            assert q.comparison_mode == "time"
-            mock_client.messages.create.assert_called_once()
-
-    def test_parse_with_grounding(self):
-        mock_response = MagicMock()
-        mock_response.content = [MagicMock(text=json.dumps({
+    def test_grounding_appears_in_prompt(self):
+        backend = MockBackend(json.dumps({
             "pitcher_name": "Ohtani",
             "pitch_types": ["FF", "FC"],
             "comparison_mode": "type",
-        }))]
+        }))
 
-        with patch("backend.app.query.parser.Anthropic") as MockCls:
+        parser = QueryParser(backend)
+        grounding = [
+            {"name": "Ohtani", "pitch_types": ["FF", "SL", "CU", "FC"], "games": ["2026-04-01"]},
+        ]
+        parser.parse("Show me his cutter vs fastball", available_pitchers=grounding)
+
+        assert "Ohtani" in backend.last_user
+        assert "FF" in backend.last_user
+        assert "2026-04-01" in backend.last_user
+
+    def test_local_constructor(self):
+        # Just test that .local() creates the right backend type
+        # (don't actually load the model)
+        with patch("backend.app.query.parser.Gemma4Backend") as MockGemma:
+            mock_instance = MagicMock()
+            MockGemma.return_value = mock_instance
+            parser = QueryParser.local()
+            assert parser.backend is mock_instance
+
+    def test_cloud_constructor(self):
+        with patch("backend.app.query.parser.AnthropicBackend") as MockAnth:
+            mock_instance = MagicMock()
+            MockAnth.return_value = mock_instance
+            parser = QueryParser.cloud(api_key="test-key")
+            MockAnth.assert_called_once_with(api_key="test-key", model="claude-haiku-4-5-20251001")
+
+    def test_anthropic_backend_calls_api(self):
+        mock_response = MagicMock()
+        mock_response.content = [MagicMock(text="test response")]
+
+        with patch("anthropic.Anthropic") as MockCls:
             mock_client = MagicMock()
             mock_client.messages.create.return_value = mock_response
             MockCls.return_value = mock_client
 
-            parser = QueryParser(api_key="test")
-            grounding = [
-                {"name": "Ohtani", "pitch_types": ["FF", "SL", "CU", "FC"], "games": ["2026-04-01"]},
-            ]
-            q = parser.parse("Show me his cutter vs fastball", available_pitchers=grounding)
+            backend = AnthropicBackend(api_key="test-key")
+            result = backend.complete("system", "user")
 
-            # Check grounding was included in the prompt
-            call_args = mock_client.messages.create.call_args
-            user_msg = call_args.kwargs["messages"][0]["content"]
-            assert "Ohtani" in user_msg
-            assert "FF" in user_msg
+            assert result == "test response"
+            mock_client.messages.create.assert_called_once()

@@ -82,20 +82,22 @@ def submit_query(
     from backend.app.query.orchestrator import QueryOrchestrator, QueryResult, ProgressToken
     from backend.app.reports.diagnostic import DiagnosticEngine, create_provider
 
-    anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
-    if not anthropic_key:
-        raise HTTPException(
-            status_code=503,
-            detail="ANTHROPIC_API_KEY not set. The query parser requires an Anthropic API key.",
-        )
-
     db = PitchDB()
-    parser = QueryParser(api_key=anthropic_key)
 
-    # Prefer local Gemma4 if mlx-vlm is available, else fall back to Claude
+    # Prefer local Gemma4 for both parsing and diagnostics (no API key needed).
+    # Fall back to Claude if mlx-vlm is not installed.
     try:
+        parser = QueryParser.local()
         engine = DiagnosticEngine(provider=create_provider("gemma4"))
     except Exception:
+        anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
+        if not anthropic_key:
+            raise HTTPException(
+                status_code=503,
+                detail="mlx-vlm not available and ANTHROPIC_API_KEY not set. "
+                "Install mlx-vlm for local inference or set ANTHROPIC_API_KEY for cloud fallback.",
+            )
+        parser = QueryParser.cloud(api_key=anthropic_key)
         engine = DiagnosticEngine(
             provider=create_provider("claude", api_key=anthropic_key)
         )

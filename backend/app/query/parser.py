@@ -2,19 +2,24 @@
 
 Takes free-text analyst queries, returns structured AnalysisQuery.
 Grounded with actual pitcher/pitch type inventory from PitchDB.
+Supports local (Gemma 4 via mlx-vlm) and cloud (Anthropic) backends.
 
 Usage:
-    parser = QueryParser(api_key="...")
+    # Local (default — no API key needed)
+    parser = QueryParser.local()
     query = parser.parse("Compare Ohtani's first inning fastballs to his 6th inning")
+
+    # Cloud fallback
+    parser = QueryParser.cloud(api_key="sk-...")
+    query = parser.parse("Why did his slider command fall off?")
 """
 
 from __future__ import annotations
 
 import json
 import logging
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-
-from anthropic import Anthropic
 
 logger = logging.getLogger(__name__)
 
@@ -71,16 +76,105 @@ CH=changeup, FS=splitter, KC=knuckle-curve, KN=knuckleball, ST=sweeper, SV=slurv
 """
 
 
-class QueryParser:
-    """Parses natural language queries into AnalysisQuery."""
+# ---------------------------------------------------------------------------
+# Parser backend interface
+# ---------------------------------------------------------------------------
+
+class ParserBackend(ABC):
+    """Abstract interface for the LLM that powers query parsing."""
+
+    name: str = "base"
+
+    @abstractmethod
+    def complete(self, system: str, user: str, max_tokens: int = 300) -> str:
+        """Send system + user prompt, return raw text response."""
+        ...
+
+
+class Gemma4Backend(ParserBackend):
+    """Local Gemma 4 E4B via mlx-vlm. No API key needed."""
+
+    name = "gemma4"
+
+    def __init__(self, model_id: str = "google/gemma-4-e4b-it"):
+        self.model_id = model_id
+        self._model = None
+        self._processor = None
+
+    def _load(self):
+        if self._model is not None:
+            return
+        from mlx_vlm import load
+        self._model, self._processor = load(self.model_id)
+
+    def complete(self, system: str, user: str, max_tokens: int = 300) -> str:
+        self._load()
+        from mlx_vlm import generate as vlm_generate
+        from mlx_vlm.prompt_utils import apply_chat_template
+
+        prompt = f"{system}\n\n{user}"
+        formatted = apply_chat_template(
+            self._processor,
+            self._model.config,
+            prompt,
+            num_images=0,
+        )
+
+        return vlm_generate(
+            model=self._model,
+            processor=self._processor,
+            prompt=formatted,
+            image=None,
+            max_tokens=max_tokens,
+        )
+
+
+class AnthropicBackend(ParserBackend):
+    """Anthropic Claude API. Requires API key."""
+
+    name = "anthropic"
 
     def __init__(
         self,
         api_key: str | None = None,
         model: str = "claude-haiku-4-5-20251001",
-    ) -> None:
+    ):
+        from anthropic import Anthropic
         self.client = Anthropic(api_key=api_key)
         self.model = model
+
+    def complete(self, system: str, user: str, max_tokens: int = 300) -> str:
+        response = self.client.messages.create(
+            model=self.model,
+            max_tokens=max_tokens,
+            system=system,
+            messages=[{"role": "user", "content": user}],
+        )
+        return response.content[0].text.strip()
+
+
+# ---------------------------------------------------------------------------
+# QueryParser
+# ---------------------------------------------------------------------------
+
+class QueryParser:
+    """Parses natural language queries into AnalysisQuery.
+
+    Provider-agnostic: pass any ParserBackend.
+    """
+
+    def __init__(self, backend: ParserBackend) -> None:
+        self.backend = backend
+
+    @classmethod
+    def local(cls, model_id: str = "google/gemma-4-e4b-it") -> QueryParser:
+        """Create a parser using local Gemma 4 E4B (no API key)."""
+        return cls(backend=Gemma4Backend(model_id=model_id))
+
+    @classmethod
+    def cloud(cls, api_key: str | None = None, model: str = "claude-haiku-4-5-20251001") -> QueryParser:
+        """Create a parser using Anthropic Claude API."""
+        return cls(backend=AnthropicBackend(api_key=api_key, model=model))
 
     def parse(
         self,
@@ -105,19 +199,23 @@ class QueryParser:
 
         user_msg = f"{grounding}\nQuery: {text}"
 
-        response = self.client.messages.create(
-            model=self.model,
-            max_tokens=300,
+        raw = self.backend.complete(
             system=_PARSER_SYSTEM_PROMPT,
-            messages=[{"role": "user", "content": user_msg}],
+            user=user_msg,
+            max_tokens=300,
         )
-        raw = response.content[0].text.strip()
 
         return _parse_json_response(raw)
 
 
 def _parse_json_response(raw: str) -> AnalysisQuery:
     """Parse LLM JSON output into AnalysisQuery."""
+    # Strip thinking tags if present (Gemma4 with thinking enabled)
+    if "<think>" in raw:
+        think_end = raw.find("</think>")
+        if think_end != -1:
+            raw = raw[think_end + len("</think>"):].strip()
+
     # Strip markdown fences if present
     if raw.startswith("```"):
         raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
