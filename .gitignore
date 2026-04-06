@@ -26,7 +26,11 @@ dist/
 *.db
 data/clips/
 data/meshes/
+data/debug/
+data/output/
 data/pitches.db
+data/baseball.db
+input/
 
 # Model outputs
 output/*.mp4
