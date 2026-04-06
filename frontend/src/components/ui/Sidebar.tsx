@@ -12,8 +12,8 @@ const NAV = [
 export default function Sidebar() {
   const path = usePathname()
   return (
-    <aside className="w-52 bg-gray-900 flex flex-col min-h-screen p-4 shrink-0 border-r border-gray-800">
-      <div className="text-xl font-bold mb-8 text-blue-400 tracking-tight">SPB</div>
+    <aside className="w-[200px] bg-[#111] flex flex-col min-h-screen p-4 shrink-0 border-r border-[#2a2a2a]">
+      <div className="text-lg font-bold mb-8 text-blue-400 font-data tracking-tight">SPB</div>
       <nav className="flex flex-col gap-1">
         {NAV.map((n) => (
           <Link
@@ -22,8 +22,8 @@ export default function Sidebar() {
             className={
               'px-3 py-2 rounded text-sm transition-colors ' +
               (path === n.href
-                ? 'bg-blue-700 text-white'
-                : 'text-gray-300 hover:bg-gray-800')
+                ? 'bg-blue-600/20 text-blue-400 border border-blue-600/30'
+                : 'text-gray-400 hover:bg-[#1a1a1a] border border-transparent')
             }
           >
             {n.label}

@@ -99,8 +99,8 @@ export default function AnalyzePage() {
     : []
 
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-3xl font-bold">Mechanics Diagnostic</h1>
+    <div className="flex flex-col gap-5">
+      <h1 className="text-2xl font-bold tracking-tight">Mechanics Diagnostic</h1>
 
       {/* Query bar */}
       <QueryBar
@@ -110,12 +110,12 @@ export default function AnalyzePage() {
         progressText={progressText}
       />
 
-      {/* Results */}
+      {/* Results — War Room 3-column layout */}
       {result && (
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          {/* Left: 3D viewer (2 cols) */}
-          <div className="xl:col-span-2 flex flex-col gap-3">
-            {/* Camera presets + ghost toggle */}
+        <div className="grid grid-cols-1 xl:grid-cols-[40%_35%_25%] gap-4">
+          {/* Col 1: 3D Viewer */}
+          <div className="flex flex-col gap-3">
+            {/* Controls row */}
             <div className="flex items-center justify-between flex-wrap gap-2">
               <CameraPresets
                 onPresetChange={setCameraPreset}
@@ -124,18 +124,18 @@ export default function AnalyzePage() {
               <button
                 onClick={() => setShowGhost(!showGhost)}
                 className={
-                  'px-3 py-1 rounded text-sm transition-colors ' +
+                  'px-3 py-1 rounded text-xs font-medium transition-colors ' +
                   (showGhost
                     ? 'bg-blue-600 text-white'
-                    : 'bg-gray-800 text-gray-300 hover:bg-gray-700')
+                    : 'bg-[#1a1a1a] text-gray-400 hover:bg-[#2a2a2a] border border-[#2a2a2a]')
                 }
               >
-                Ghost Overlay
+                Ghost
               </button>
             </div>
 
             {/* 3D canvas */}
-            <div className="w-full aspect-video rounded-lg overflow-hidden border border-gray-800">
+            <div className="w-full aspect-[4/3] rounded-lg overflow-hidden border border-[#2a2a2a]">
               {glbUrl ? (
                 <MoundScene cameraPreset={cameraPreset as any}>
                   <FieldGeometry />
@@ -153,13 +153,13 @@ export default function AnalyzePage() {
                   )}
                 </MoundScene>
               ) : (
-                <div className="w-full h-full bg-gray-900 flex items-center justify-center text-gray-600">
-                  3D viewer
+                <div className="w-full h-full bg-[#111] flex items-center justify-center text-gray-600 text-sm">
+                  3D Pitcher Viewer
                 </div>
               )}
             </div>
 
-            {/* Timeline + speed control */}
+            {/* Timeline + speed */}
             {totalFrames > 0 && (
               <div className="flex flex-col gap-2">
                 <TimelineScrubber
@@ -174,7 +174,7 @@ export default function AnalyzePage() {
               </div>
             )}
 
-            {/* Joint metric graph (shown when a joint is selected) */}
+            {/* Joint metric graph */}
             {selectedJoint != null && (
               <MetricGraph
                 jointLabel={`Joint ${selectedJoint}`}
@@ -186,38 +186,39 @@ export default function AnalyzePage() {
                 labelB="Group B"
               />
             )}
+          </div>
 
-            {/* Report below viewer on large screens */}
+          {/* Col 2: Diagnostic Report */}
+          <div className="flex flex-col gap-4">
             <ReportPanel report={result.report} />
           </div>
 
-          {/* Right: Stats + Metrics (1 col) */}
-          <div className="flex flex-col gap-6">
+          {/* Col 3: Statcast + Metrics */}
+          <div className="flex flex-col gap-4">
             <StatcastPanel
               groupA={result.statcast.group_a}
               groupB={result.statcast.group_b}
               labelA="Group A"
               labelB="Group B"
             />
-            {/* Metrics panel with mechanical diffs from the comparison */}
-            {result.report.risk_flags.length > 0 && (
-              <div className="bg-gray-900 rounded-lg border border-gray-800 p-5">
-                <h2 className="text-lg font-semibold mb-2">Query Details</h2>
-                <div className="text-xs text-gray-500">
-                  Pitches: {result.query.pitches_used?.join(', ') ?? 'N/A'}
-                </div>
-                <div className="text-xs text-gray-500 mt-1">
-                  Mode: {String(result.query.parsed?.comparison_mode ?? 'N/A')}
-                </div>
+
+            {/* Query details */}
+            <div className="bg-[#111] rounded-lg border border-[#2a2a2a] p-4">
+              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Query</h3>
+              <div className="font-data text-xs text-gray-400">
+                Pitches: {result.query.pitches_used?.join(', ') ?? 'N/A'}
               </div>
-            )}
+              <div className="font-data text-xs text-gray-400 mt-1">
+                Mode: {String(result.query.parsed?.comparison_mode ?? 'N/A')}
+              </div>
+            </div>
           </div>
         </div>
       )}
 
       {/* Empty state */}
       {!result && !loading && (
-        <div className="text-center text-gray-600 py-20">
+        <div className="text-center text-gray-600 py-20 text-sm">
           Ask a question about pitcher mechanics to get started.
         </div>
       )}

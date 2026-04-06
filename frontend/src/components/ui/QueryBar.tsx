@@ -39,9 +39,9 @@ export default function QueryBar({ onSubmit, loading, error, progressText }: Pro
           onChange={(e) => setText(e.target.value)}
           placeholder="Ask about pitcher mechanics..."
           disabled={loading}
-          className="flex-1 bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-sm
+          className="flex-1 bg-[#111] border border-[#2a2a2a] rounded-lg px-4 py-3 text-sm
             focus:outline-none focus:border-blue-500 disabled:opacity-50
-            placeholder:text-gray-500"
+            placeholder:text-gray-600"
         />
         <button
           type="submit"
@@ -75,8 +75,8 @@ export default function QueryBar({ onSubmit, loading, error, progressText }: Pro
             <button
               key={ex}
               onClick={() => useExample(ex)}
-              className="text-xs text-gray-400 bg-gray-800 hover:bg-gray-700 rounded-full
-                px-3 py-1 transition-colors border border-gray-700"
+              className="text-xs text-gray-500 bg-[#111] hover:bg-[#1a1a1a] rounded-full
+                px-3 py-1 transition-colors border border-[#2a2a2a]"
             >
               {ex}
             </button>

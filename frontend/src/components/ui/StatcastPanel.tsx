@@ -23,8 +23,8 @@ const STAT_CONFIG: { key: keyof StatGroup; label: string; unit: string; decimals
 
 export default function StatcastPanel({ groupA, groupB, labelA, labelB }: Props) {
   return (
-    <div className="bg-gray-900 rounded-lg border border-gray-800 p-5">
-      <h2 className="text-lg font-semibold mb-3">Statcast</h2>
+    <div className="bg-[#111] rounded-lg border border-[#2a2a2a] p-4">
+      <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 mb-3">Statcast</h2>
       <div className="grid grid-cols-2 gap-4">
         {/* Column headers */}
         <div className="text-xs text-gray-500 font-medium">{labelA}</div>
@@ -47,7 +47,7 @@ export default function StatcastPanel({ groupA, groupB, labelA, labelB }: Props)
             <div key={key} className="contents">
               <div className="flex flex-col">
                 <span className="text-xs text-gray-500">{label}</span>
-                <span className="text-lg font-medium tabular-nums">
+                <span className="text-lg font-medium font-data tabular-nums">
                   {a != null ? a.toFixed(decimals) : '—'}
                   <span className="text-xs text-gray-500 ml-1">{unit}</span>
                 </span>
@@ -56,7 +56,7 @@ export default function StatcastPanel({ groupA, groupB, labelA, labelB }: Props)
                 <span className={'text-xs ' + diffColor}>
                   {diff != null ? `${diff >= 0 ? '+' : ''}${diff.toFixed(decimals)}` : ''}
                 </span>
-                <span className="text-lg font-medium tabular-nums">
+                <span className="text-lg font-medium font-data tabular-nums">
                   {b != null ? b.toFixed(decimals) : '—'}
                   <span className="text-xs text-gray-500 ml-1">{unit}</span>
                 </span>
