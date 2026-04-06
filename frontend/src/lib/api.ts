@@ -22,7 +22,12 @@ async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
     ...opts,
     headers: { 'Content-Type': 'application/json', ...(opts?.headers ?? {}) },
   })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const text = await res.text()
+    let msg = text
+    try { msg = JSON.parse(text).detail ?? text } catch {}
+    throw new Error(msg)
+  }
   return res.json() as Promise<T>
 }
 
@@ -49,7 +54,12 @@ export async function uploadVideo(
   form.append('pitcherId', pitcherId)
   form.append('metadata', JSON.stringify(metadata))
   const res = await fetch(API_BASE + '/api/upload', { method: 'POST', body: form })
-  if (!res.ok) throw new Error(await res.text())
+  if (!res.ok) {
+    const text = await res.text()
+    let msg = text
+    try { msg = JSON.parse(text).detail ?? text } catch {}
+    throw new Error(msg)
+  }
   return res.json() as Promise<{ jobId: string }>
 }
 

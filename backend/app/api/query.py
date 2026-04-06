@@ -76,15 +76,29 @@ def submit_query(
     Returns the full response bundle if all meshes are cached.
     Returns a progress token if MLX inference is needed.
     """
+    import os
     from backend.app.data.pitch_db import PitchDB
     from backend.app.query.parser import QueryParser
     from backend.app.query.orchestrator import QueryOrchestrator, QueryResult, ProgressToken
     from backend.app.reports.diagnostic import DiagnosticEngine, create_provider
 
-    # TODO: inject these via app state instead of constructing per-request
+    anthropic_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not anthropic_key:
+        raise HTTPException(
+            status_code=503,
+            detail="ANTHROPIC_API_KEY not set. The query parser requires an Anthropic API key.",
+        )
+
     db = PitchDB()
-    parser = QueryParser()
-    engine = DiagnosticEngine(provider=create_provider("gemma4"))
+    parser = QueryParser(api_key=anthropic_key)
+
+    # Prefer local Gemma4 if mlx-vlm is available, else fall back to Claude
+    try:
+        engine = DiagnosticEngine(provider=create_provider("gemma4"))
+    except Exception:
+        engine = DiagnosticEngine(
+            provider=create_provider("claude", api_key=anthropic_key)
+        )
 
     orch = QueryOrchestrator(db=db, parser=parser, diagnostic_engine=engine)
 
