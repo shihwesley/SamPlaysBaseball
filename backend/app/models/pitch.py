@@ -30,6 +30,7 @@ class PitchMetadata(BaseModel):
     plate_x: float | None = None
     plate_z: float | None = None
     result: str | None = None  # ball, strike, hit, etc.
+    player_height_m: float | None = None  # roster height for scale correction
     video_path: str | None = None
     frame_start: int | None = None
     frame_end: int | None = None
@@ -107,3 +108,29 @@ class PitchData(BaseModel):
             shape_params=shape_params.tolist(),
             skeleton_type=skeleton_type,
         )
+
+    def scale_to_height(self) -> "PitchData":
+        """Apply height-based scale correction using roster data.
+
+        Computes a uniform scale factor from the mesh's Y-span vs the
+        player's known height, then rescales all joint positions.
+        Returns self (mutates in place) for chaining.
+        """
+        height_m = self.metadata.player_height_m
+        if height_m is None or self.num_frames == 0:
+            return self
+
+        joints = self.joints_array()  # (T, 127, 3)
+        # Mesh height = max Y - min Y across all frames
+        mesh_height = float(joints[:, :, 1].max() - joints[:, :, 1].min())
+        if mesh_height < 0.1:
+            return self
+
+        scale = height_m / mesh_height
+        self.joints = (joints * scale).tolist()
+
+        if self.joints_mhr70 is not None:
+            mhr70 = self.joints_mhr70_array()
+            self.joints_mhr70 = (mhr70 * scale).tolist()
+
+        return self

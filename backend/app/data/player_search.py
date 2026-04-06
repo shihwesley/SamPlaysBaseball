@@ -44,12 +44,28 @@ HEADERS = {
 }
 
 
+def _parse_height_to_meters(height_str: str) -> float | None:
+    """Parse MLB height string like '6\' 4\"' to meters."""
+    if not height_str:
+        return None
+    try:
+        clean = height_str.replace('"', '').strip()
+        parts = clean.split("'")
+        feet = int(parts[0].strip())
+        inches = int(parts[1].strip()) if len(parts) > 1 and parts[1].strip() else 0
+        return (feet * 12 + inches) * 0.0254
+    except (ValueError, IndexError):
+        return None
+
+
 @dataclass
 class Player:
     id: int
     name: str
     position: str
     team: str | None = None
+    height_m: float | None = None
+    weight_lbs: int | None = None
 
 
 @dataclass
@@ -109,6 +125,8 @@ class PlayerSearch:
                 name=p.get("fullName", ""),
                 position=p.get("primaryPosition", {}).get("abbreviation", "?"),
                 team=p.get("currentTeam", {}).get("name"),
+                height_m=_parse_height_to_meters(p.get("height", "")),
+                weight_lbs=p.get("weight"),
             )
             players.append(player)
 

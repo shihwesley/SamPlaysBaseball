@@ -47,6 +47,21 @@
 - Review: P0=0, P1=0, P2=7, P3=9 (all deferred)
 - Deferred: 11 items (memoization, camera preset updates, pygltflib tests, gltfpack quantization, frontend tests)
 
+## Phase 4 Sprint 1 — demo-mode + historical-legends
+- Date: 2026-04-03
+- Commit: abe7767 (feat), 08229d9 (merge)
+- Status: completed
+- Tests: 39 passing, 2 failing (pre-existing e2e failures, unrelated to this phase)
+- Files delivered:
+  - demo/__init__.py, generate_synthetic.py, process_samples.py, launcher.py
+  - demo/docker-compose.yml, Dockerfile.api, Dockerfile.frontend
+  - demo/README.md, TALKING_POINTS.md
+  - demo/legends/process_legends.py, legends/talking_points.json, legends/README.md
+  - demo/data/ + demo/data/legends/ + demo/results/ placeholders
+- Synthetic data: 50 pitches across 3 pitchers (sam_torres, jake_kim, demo_pitcher_01)
+- All 6 analysis modules, baselines, joint data — GPU-free, runs with python3 + numpy only
+- Legends: Rivera, Pedro, Kershaw, Maddux, Randy Johnson with biomechanical talking points
+
 ## Phase 3 Sprint 1 — api-layer + ai-scouting-reports
 - Date: 2026-04-03
 - Commit: 1bc756b (feat), merge to main
