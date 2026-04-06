@@ -1,5 +1,42 @@
 # Progress Log
 
+## Session: 2026-04-05
+
+### Milestones
+- **MLX bugs fixed and validated:** 3 bugs in MHR body model corrected (parameter_limits, scale formula, pose correctives). Vertices now match PyTorch within 0.0001mm.
+- **MLX now default backend:** batch_inference.py defaults to --backend mlx (~490ms/frame on M3 Max)
+- **Phase 2 fully validated:** 112 tests passing across all feature extraction, analysis, and export modules
+- **Delivery comparison built:** compare_deliveries() function with phase-normalized alignment, spatial divergence, kinetic chain comparison
+- **Diagnostic report engine built:** Provider-agnostic DiagnosticEngine with Gemma4/Claude/OpenAI/Ollama backends
+- **Mechanics diagnostic designed:** Full design doc for query-driven pitcher analysis tool (docs/plans/2026-04-05-mechanics-diagnostic-design.md)
+- **All Phase 2 + MLX specs marked implemented**
+
+### What was built
+| Component | File | Commit |
+|-----------|------|--------|
+| MLX pred_shape/pred_pose output | sam3d_mlx/mhr_head.py, estimator.py | fbdacf9 |
+| MLX backend for batch_inference | scripts/batch_inference.py | fbdacf9 |
+| Backend-agnostic inference ABC | backend/app/pipeline/inference.py | fbdacf9 |
+| Delivery comparison module | backend/app/analysis/compare_deliveries.py | fbdacf9 |
+| Diagnostic report engine | backend/app/reports/diagnostic.py | b18ae44 |
+| Normative biomechanical ranges | backend/app/reports/norms.py | b18ae44 |
+| Mechanics diagnostic design doc | docs/plans/2026-04-05-mechanics-diagnostic-design.md | 1c21f36 |
+
+### Validation
+- Ran fresh MLX inference on ohtani_ws_g7_pitch1.mp4 (120 frames at 60fps)
+- Feature extraction on post-fix MLX output shows real motion: elbow flex range 88 deg, angular vel 1914 deg/s
+- Kinetic chain is sequential (pelvis → trunk → shoulder → elbow �� wrist)
+- Pre-fix data was essentially static (0.5 deg variation) — confirmed by comparing file dates to bug fix commits
+
+### Decisions
+- MLX is the default inference backend (was PyTorch/MPS)
+- Gemma 4 E4B via mlx-vlm for local multimodal diagnostic reports (vision + text, ~16GB)
+- Provider-agnostic LLM interface — can swap to Claude API, Ollama, or any OpenAI-compatible endpoint
+- On-demand inference with cache for MVP; batch pre-compute after games for production
+- Hybrid dashboard: query bar (LLM-parsed) + traditional filters, 3D viewer + report + metrics
+
+---
+
 ## Session: 2026-04-04
 
 ### Milestones
@@ -66,28 +103,28 @@
 | video-pipeline | 1 | 2 | **implemented** | 2026-04-04 |
 | sam3d-inference | 1 | 2 | **implemented** | 2026-04-04 |
 | pitch-matcher | 1 | 2 | designed | 2026-04-04 |
-| feature-extraction | 2 | 1 | draft | 2026-02-16 |
-| mesh-export | 2 | 1 | draft | 2026-02-16 |
-| baseline-comparison | 2 | 2 | draft | 2026-02-16 |
-| tipping-detection | 2 | 2 | draft | 2026-02-16 |
-| fatigue-tracking | 2 | 2 | draft | 2026-02-16 |
-| command-analysis | 2 | 2 | draft | 2026-02-16 |
-| arm-slot-drift | 2 | 2 | draft | 2026-02-16 |
-| timing-analysis | 2 | 2 | draft | 2026-02-16 |
-| injury-risk | 2 | 3 | draft | 2026-02-16 |
-| ai-scouting-reports | 3 | 1 | draft | 2026-02-16 |
-| api-layer | 3 | 1 | draft | 2026-02-16 |
-| 3d-visualization | 3 | 2 | draft | 2026-02-16 |
-| dashboard-ui | 3 | 2 | draft | 2026-02-16 |
+| feature-extraction | 2 | 1 | **implemented** | 2026-04-05 |
+| mesh-export | 2 | 1 | **implemented** | 2026-04-05 |
+| baseline-comparison | 2 | 2 | **implemented** | 2026-04-05 |
+| tipping-detection | 2 | 2 | **implemented** | 2026-04-05 |
+| fatigue-tracking | 2 | 2 | **implemented** | 2026-04-05 |
+| command-analysis | 2 | 2 | **implemented** | 2026-04-05 |
+| arm-slot-drift | 2 | 2 | **implemented** | 2026-04-05 |
+| timing-analysis | 2 | 2 | **implemented** | 2026-04-05 |
+| injury-risk | 2 | 3 | **implemented** | 2026-04-05 |
+| ai-scouting-reports | 3 | 1 | **implemented** | 2026-04-05 |
+| api-layer | 3 | 1 | **implemented** | 2026-04-05 |
+| 3d-visualization | 3 | 2 | **implemented** | 2026-04-05 |
+| dashboard-ui | 3 | 2 | **implemented** | 2026-04-05 |
 | blender-render | 3 | 2 | draft | 2026-02-16 |
 | historical-legends | 4 | 1 | draft | 2026-02-16 |
 | demo-mode | 4 | 1 | draft | 2026-02-16 |
-| mlx-weight-converter | MLX-1 | 1 | draft | 2026-04-03 |
-| mlx-backbone | MLX-1 | 2 | draft | 2026-04-03 |
-| mlx-decoder | MLX-2 | 1 | draft | 2026-04-03 |
-| mlx-mhr-head | MLX-2 | 2 | draft | 2026-04-03 |
-| mlx-inference | MLX-3 | 1 | draft | 2026-04-03 |
-| mlx-validation | MLX-3 | 1 | draft | 2026-04-03 |
+| mlx-weight-converter | MLX-1 | 1 | **implemented** | 2026-04-05 |
+| mlx-backbone | MLX-1 | 2 | **implemented** | 2026-04-05 |
+| mlx-decoder | MLX-2 | 1 | **implemented** | 2026-04-05 |
+| mlx-mhr-head | MLX-2 | 2 | **implemented** | 2026-04-05 |
+| mlx-inference | MLX-3 | 1 | **implemented** | 2026-04-05 |
+| mlx-validation | MLX-3 | 1 | **implemented** | 2026-04-05 |
 
 ### Status legend
 - **draft** — spec written, not yet implemented

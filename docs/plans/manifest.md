@@ -1,10 +1,10 @@
 # SamPlaysBaseball — Project Manifest
 
 **Project:** Pitcher Mechanics Analyzer
-**Date:** 2026-04-04 (revised from 2026-02-16)
+**Date:** 2026-04-05 (revised from 2026-04-04)
 **Mode:** Spec-driven
 **Priority:** Quality
-**Stack:** Next.js + FastAPI + SAM 3D Body (PyTorch/MPS) + Three.js + Blender
+**Stack:** Next.js + FastAPI + SAM 3D Body (MLX/PyTorch) + Three.js + Gemma 4 E4B (mlx-vlm)
 
 ## Goal
 
@@ -18,7 +18,7 @@ Target audience: MLB player development personnel. Portfolio/showcase project.
 
 - **Dual mode:** batch analysis (upload/Savant clips) + live game companion (stream, future)
 - **Ohtani MVP first:** prove pipeline on one pitcher before expanding
-- **Local inference:** M3 Max MPS at 1.1 fps (validated). Cloud GPU only for real-time/SAM4Dcap.
+- **Local inference:** MLX at ~2 fps on M3 Max (default backend). PyTorch/MPS fallback. Cloud GPU only for real-time/SAM4Dcap.
 - **Data source:** Baseball Savant per-pitch clips (pre-segmented, Statcast-linked)
 
 ## Dependency Graph
@@ -86,19 +86,19 @@ graph TD
 | 1 | 2 | video-pipeline | data-model, pitch-fetcher | **implemented** |
 | 1 | 2 | sam3d-inference | video-pipeline | **implemented** |
 | 1 | 2 | pitch-matcher | statcast-integration | designed |
-| 2 | 1 | feature-extraction | sam3d-inference | draft |
-| 2 | 1 | mesh-export | sam3d-inference, feature-extraction | draft |
-| 2 | 2 | baseline-comparison | feature-extraction | draft |
-| 2 | 2 | tipping-detection | feature-extraction | draft |
-| 2 | 2 | fatigue-tracking | feature-extraction | draft |
-| 2 | 2 | command-analysis | feature-extraction | draft |
-| 2 | 2 | arm-slot-drift | feature-extraction | draft |
-| 2 | 2 | timing-analysis | feature-extraction | draft |
-| 2 | 3 | injury-risk | fatigue, arm-slot, timing | draft |
-| 3 | 1 | ai-scouting-reports | all analysis + injury-risk + statcast | draft |
-| 3 | 1 | api-layer | data-model, all analysis, scouting | draft |
-| 3 | 2 | 3d-visualization | api-layer, mesh-export | draft |
-| 3 | 2 | dashboard-ui | api-layer | draft |
+| 2 | 1 | feature-extraction | sam3d-inference | **implemented** |
+| 2 | 1 | mesh-export | sam3d-inference, feature-extraction | **implemented** |
+| 2 | 2 | baseline-comparison | feature-extraction | **implemented** |
+| 2 | 2 | tipping-detection | feature-extraction | **implemented** |
+| 2 | 2 | fatigue-tracking | feature-extraction | **implemented** |
+| 2 | 2 | command-analysis | feature-extraction | **implemented** |
+| 2 | 2 | arm-slot-drift | feature-extraction | **implemented** |
+| 2 | 2 | timing-analysis | feature-extraction | **implemented** |
+| 2 | 3 | injury-risk | fatigue, arm-slot, timing | **implemented** |
+| 3 | 1 | ai-scouting-reports | all analysis + injury-risk + statcast | **implemented** |
+| 3 | 1 | api-layer | data-model, all analysis, scouting | **implemented** |
+| 3 | 2 | 3d-visualization | api-layer, mesh-export | **implemented** |
+| 3 | 2 | dashboard-ui | api-layer | **implemented** |
 | 3 | 2 | blender-render | mesh-export, 3d-visualization | draft |
 | 4 | 1 | historical-legends | pipeline + feature-extraction + baseline | draft |
 | 4 | 1 | demo-mode | 3d-visualization, dashboard-ui | draft |
@@ -107,14 +107,14 @@ graph TD
 
 | Phase | Sprint | Spec | Status |
 |-------|--------|------|--------|
-| MLX-1 | 1 | mlx-weight-converter | draft |
-| MLX-1 | 2 | mlx-backbone | draft |
-| MLX-2 | 1 | mlx-decoder | draft |
-| MLX-2 | 2 | mlx-mhr-head | draft |
-| MLX-3 | 1 | mlx-inference | draft |
-| MLX-3 | 1 | mlx-validation | draft |
+| MLX-1 | 1 | mlx-weight-converter | **implemented** |
+| MLX-1 | 2 | mlx-backbone | **implemented** |
+| MLX-2 | 1 | mlx-decoder | **implemented** |
+| MLX-2 | 2 | mlx-mhr-head | **implemented** |
+| MLX-3 | 1 | mlx-inference | **implemented** |
+| MLX-3 | 1 | mlx-validation | **implemented** |
 
-Note: MLX port is an optimization. PyTorch/MPS already runs 2.4x faster (1.1fps vs 0.5fps).
+Note: MLX port is fully functional after 3 bug fixes (2026-04-05). Runs at ~490ms/frame on M3 Max. Now the default backend for batch_inference.py.
 
 ## Spec Files
 
@@ -125,29 +125,29 @@ Note: MLX port is an optimization. PyTorch/MPS already runs 2.4x faster (1.1fps 
 | sam3d-inference | specs/sam3d-inference-spec.md | **implemented** | Revised 2026-04-04 — MPS batch inference |
 | pitch-fetcher | — | **implemented** | scripts/fetch_savant_clips.py (no spec, built directly) |
 | pitch-matcher | docs/plans/2026-04-04-pitch-matcher-design.md | designed | Tiered DTW design, blocked on pipeline output |
-| feature-extraction | specs/feature-extraction-spec.md | draft | Next to implement |
-| baseline-comparison | specs/baseline-comparison-spec.md | draft | |
-| tipping-detection | specs/tipping-detection-spec.md | draft | |
-| fatigue-tracking | specs/fatigue-tracking-spec.md | draft | |
-| command-analysis | specs/command-analysis-spec.md | draft | |
-| arm-slot-drift | specs/arm-slot-drift-spec.md | draft | |
-| timing-analysis | specs/timing-analysis-spec.md | draft | |
-| injury-risk | specs/injury-risk-spec.md | draft | |
+| feature-extraction | specs/feature-extraction-spec.md | **implemented** | 29 tests, MLX validated 2026-04-05 |
+| baseline-comparison | specs/baseline-comparison-spec.md | **implemented** | Z-score deviation from baseline |
+| tipping-detection | specs/tipping-detection-spec.md | **implemented** | Cross-pitch-type mechanical tells |
+| fatigue-tracking | specs/fatigue-tracking-spec.md | **implemented** | Rolling baseline drift + changepoint detection |
+| command-analysis | specs/command-analysis-spec.md | **implemented** | Release point clustering + deviations |
+| arm-slot-drift | specs/arm-slot-drift-spec.md | **implemented** | Arm slot angle tracking |
+| timing-analysis | specs/timing-analysis-spec.md | **implemented** | Phase timing + energy decomposition |
+| injury-risk | specs/injury-risk-spec.md | **implemented** | Composite risk score, traffic light, trend tracking |
 | statcast-integration | specs/statcast-integration-spec.md | **implemented** | Revised 2026-04-04 — PitchDB enrichment + PlayerSearch |
-| mesh-export | specs/mesh-export-spec.md | draft | |
-| api-layer | specs/api-layer-spec.md | draft | |
-| 3d-visualization | specs/3d-visualization-spec.md | draft | |
-| dashboard-ui | specs/dashboard-ui-spec.md | draft | |
+| mesh-export | specs/mesh-export-spec.md | **implemented** | GLB exporter + comparison + ground plane + mound |
+| api-layer | specs/api-layer-spec.md | **implemented** | FastAPI routes: analysis, compare, pitchers, reports, upload, websocket |
+| 3d-visualization | specs/3d-visualization-spec.md | **implemented** | 9 R3F components: MoundScene, PitcherMesh, Ghost, Timeline, etc. |
+| dashboard-ui | specs/dashboard-ui-spec.md | **implemented** | Next.js with pitcher, compare, upload routes |
 | blender-render | specs/blender-render-spec.md | draft | |
-| ai-scouting-reports | specs/ai-scouting-reports-spec.md | draft | |
+| ai-scouting-reports | specs/ai-scouting-reports-spec.md | **implemented** | LLM reports + PDF + templates + diagnostic engine |
 | historical-legends | specs/historical-legends-spec.md | draft | |
 | demo-mode | specs/demo-mode-spec.md | draft | |
-| mlx-weight-converter | specs/mlx-weight-converter-spec.md | draft | |
-| mlx-backbone | specs/mlx-backbone-spec.md | draft | |
-| mlx-mhr-head | specs/mlx-mhr-head-spec.md | draft | |
-| mlx-decoder | specs/mlx-decoder-spec.md | draft | |
-| mlx-inference | specs/mlx-inference-spec.md | draft | |
-| mlx-validation | specs/mlx-validation-spec.md | draft | |
+| mlx-weight-converter | specs/mlx-weight-converter-spec.md | **implemented** | safetensors conversion working |
+| mlx-backbone | specs/mlx-backbone-spec.md | **implemented** | ViT backbone ported |
+| mlx-mhr-head | specs/mlx-mhr-head-spec.md | **implemented** | 3 bugs fixed: param_limits, scale, pose correctives |
+| mlx-decoder | specs/mlx-decoder-spec.md | **implemented** | Transformer decoder ported |
+| mlx-inference | specs/mlx-inference-spec.md | **implemented** | ~490ms/frame on M3 Max, default backend |
+| mlx-validation | specs/mlx-validation-spec.md | **implemented** | Vertices match PyTorch within 0.0001mm |
 
 ## What Exists (implemented without specs or ahead of specs)
 

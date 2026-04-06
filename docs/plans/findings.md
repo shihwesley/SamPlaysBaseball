@@ -118,7 +118,7 @@ New: live game companion (stream mode) + upload mode (batch analysis). Both firs
 - **SAM4Dcap** (arXiv:2602.13760): SAM-Body4D + OpenSim for biomechanics. Directly solves video → biomechanics.
 - **SAM 3D Body on MPS** (validated 2026-04-03): PyTorch/MPS runs at 1.1 fps on M3 Max, 2.4x faster than MLX port with better mesh quality. Cloud GPU not needed for batch analysis.
 - **fal.ai API**: SAM 3D Body at $0.02/image. Good for prototyping, expensive at scale. Less relevant now that local MPS works.
-- **mlx-vlm**: SAM 3/3.1 segmentation already runs on MLX (Apple Silicon). SAM 3D Body MLX port exists but is 2.4x slower than PyTorch/MPS — optimization project, not a blocker.
+- **mlx-vlm**: SAM 3/3.1 segmentation runs on MLX. SAM 3D Body MLX port now fully functional after 3 bug fixes (~490ms/frame). Also used for Gemma 4 E4B multimodal diagnostic reports.
 - **Driveline OpenBiomechanics**: 100K+ pitches of motion capture data. Validation reference (not direct input).
 
 ### Local MPS Validation (2026-04-03)
@@ -142,8 +142,11 @@ Implication: **cloud GPU not required for batch analysis.** M3 Max handles the O
 | Pitcher detection | Statcast game log | No computer vision needed. Statcast records which pitcher threw each pitch. |
 | Pitch matching | Cross-reference + sequence alignment | Velocity + type + timing first, DTW/Needleman-Wunsch fallback. |
 | Inference hardware | Local MPS (batch) / Cloud GPU (stream) | M3 Max handles batch at 1.1 fps. Cloud only for real-time or SAM4Dcap. Updated 2026-04-04. |
-| MLX port | Separate project, lower priority | PyTorch/MPS already 2.4x faster than current MLX port. Port is an optimization, not a blocker. |
+| MLX port | **Complete — now default backend** | 3 bugs fixed (param_limits, scale, pose correctives). ~490ms/frame, vertices match PyTorch within 0.0001mm. Default in batch_inference.py. |
+| LLM for diagnostics | Gemma 4 E4B local via mlx-vlm | Multimodal (vision+text), ~16GB, runs on M3 Max alongside SAM 3D Body. Provider-agnostic engine supports Claude API, Ollama, OpenAI-compat as fallbacks. |
 | LLM fact-checking | Skip for MVP | Feed correct structured data to LLM, trust output. |
+| Inference backend | Abstracted with factory pattern | create_inference("mlx") or create_inference("pytorch"). Backend-agnostic ABC in pipeline/inference.py. |
+| Delivery comparison | Phase-normalized alignment | compare_deliveries() normalizes both pitches to 101 frames (wind-up/cocking/acceleration), diffs all biomechanical features, identifies most divergent moment. |
 
 ### Critical Gaps Identified
 1. Broadcast pitch segmentation (replay false positives)
