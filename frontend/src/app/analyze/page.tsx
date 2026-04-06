@@ -6,6 +6,7 @@ import ReportPanel from '@/components/ui/ReportPanel'
 import MetricsPanel from '@/components/ui/MetricsPanel'
 import StatcastPanel from '@/components/ui/StatcastPanel'
 import CameraPresets from '@/components/three/CameraPresets'
+import SpeedControl from '@/components/three/SpeedControl'
 import {
   submitQuery,
   pollQueryStatus,
@@ -18,6 +19,9 @@ const MoundScene = dynamic(() => import('@/components/three/MoundScene'), { ssr:
 const PitcherMesh = dynamic(() => import('@/components/three/PitcherMesh'), { ssr: false })
 const GhostOverlay = dynamic(() => import('@/components/three/GhostOverlay'), { ssr: false })
 const TimelineScrubber = dynamic(() => import('@/components/three/TimelineScrubber'), { ssr: false })
+const FieldGeometry = dynamic(() => import('@/components/three/FieldGeometry'), { ssr: false })
+const JointSelector = dynamic(() => import('@/components/three/JointSelector'), { ssr: false })
+const MetricGraph = dynamic(() => import('@/components/three/MetricGraph'), { ssr: false })
 
 export default function AnalyzePage() {
   // Query state
@@ -31,6 +35,8 @@ export default function AnalyzePage() {
   const [currentFrame, setCurrentFrame] = useState(0)
   const [cameraPreset, setCameraPreset] = useState('catcher')
   const [showGhost, setShowGhost] = useState(true)
+  const [playbackSpeed, setPlaybackSpeed] = useState(1)
+  const [selectedJoint, setSelectedJoint] = useState<number | null>(null)
 
   // Clean up polling on unmount
   useEffect(() => {
@@ -132,6 +138,7 @@ export default function AnalyzePage() {
             <div className="w-full aspect-video rounded-lg overflow-hidden border border-gray-800">
               {glbUrl ? (
                 <MoundScene cameraPreset={cameraPreset as any}>
+                  <FieldGeometry />
                   <PitcherMesh
                     glbUrl={glbUrl}
                     currentFrame={currentFrame}
@@ -152,13 +159,31 @@ export default function AnalyzePage() {
               )}
             </div>
 
-            {/* Timeline */}
+            {/* Timeline + speed control */}
             {totalFrames > 0 && (
-              <TimelineScrubber
-                currentFrame={currentFrame}
-                totalFrames={totalFrames}
+              <div className="flex flex-col gap-2">
+                <TimelineScrubber
+                  currentFrame={currentFrame}
+                  totalFrames={totalFrames}
+                  phaseMarkers={phaseMarkers}
+                  onFrameChange={setCurrentFrame}
+                />
+                <div className="flex justify-end">
+                  <SpeedControl speed={playbackSpeed} onSpeedChange={setPlaybackSpeed} />
+                </div>
+              </div>
+            )}
+
+            {/* Joint metric graph (shown when a joint is selected) */}
+            {selectedJoint != null && (
+              <MetricGraph
+                jointLabel={`Joint ${selectedJoint}`}
+                anglesA={[]}
+                anglesB={[]}
                 phaseMarkers={phaseMarkers}
-                onFrameChange={setCurrentFrame}
+                currentFrame={currentFrame}
+                labelA="Group A"
+                labelB="Group B"
               />
             )}
 
