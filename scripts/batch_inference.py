@@ -18,6 +18,7 @@ Usage:
 """
 
 import argparse
+import math
 import os
 import sys
 import time
@@ -28,25 +29,29 @@ os.environ.pop("PYOPENGL_PLATFORM", None)
 
 import cv2
 import numpy as np
-import torch
 
 sys.path.insert(0, "/tmp/sam-3d-body")
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from sam_3d_body import load_sam_3d_body, SAM3DBodyEstimator
 from backend.app.data.pitch_db import PitchDB, MeshData
 
 
-def load_model(
+# ---------------------------------------------------------------------------
+# Backend: PyTorch / MPS
+# ---------------------------------------------------------------------------
+
+def load_model_pytorch(
     checkpoint_path: str = "/tmp/sam3d-weights/model.ckpt",
     mhr_path: str = "/tmp/sam3d-weights/assets/mhr_model.pt",
     device: str = "mps",
 ):
-    """Load SAM 3D Body model and person detector. Returns (estimator, detector, device)."""
+    """Load PyTorch SAM 3D Body + person detector."""
+    import torch
     import torchvision
+    from sam_3d_body import load_sam_3d_body, SAM3DBodyEstimator
 
     dev = torch.device(device)
-    print(f"Loading SAM 3D Body on {dev}...")
+    print(f"Loading SAM 3D Body (PyTorch) on {dev}...")
     t0 = time.time()
 
     model, cfg = load_sam_3d_body(checkpoint_path, device=dev, mhr_path=mhr_path)
@@ -60,17 +65,16 @@ def load_model(
     return estimator, detector, dev
 
 
-def process_clip(
+def process_clip_pytorch(
     video_path: str,
-    estimator: SAM3DBodyEstimator,
+    estimator,
     detector,
-    device: torch.device,
+    device,
     det_threshold: float = 0.5,
 ) -> tuple[MeshData | None, float]:
-    """Run inference on a single clip.
+    """Run PyTorch/MPS inference on a single clip."""
+    import torch
 
-    Returns (MeshData or None, total_inference_ms).
-    """
     cap = cv2.VideoCapture(video_path)
     if not cap.isOpened():
         print(f"  Cannot open {video_path}")
@@ -87,7 +91,6 @@ def process_clip(
     focal_length = None
     total_ms = 0.0
 
-    frame_idx = 0
     while True:
         ret, frame = cap.read()
         if not ret:
@@ -95,7 +98,6 @@ def process_clip(
 
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        # Detect person
         img_tensor = torch.from_numpy(rgb.copy()).permute(2, 0, 1).float().to(device) / 255.0
         with torch.no_grad():
             preds = detector([img_tensor])[0]
@@ -109,7 +111,6 @@ def process_clip(
         if len(boxes_np) == 0:
             boxes_np = np.array([[0, 0, width, height]])
 
-        # Pick largest person (likely the pitcher)
         areas = (boxes_np[:, 2] - boxes_np[:, 0]) * (boxes_np[:, 3] - boxes_np[:, 1])
         best = np.argmax(areas)
         bbox = boxes_np[best:best+1]
@@ -124,12 +125,10 @@ def process_clip(
             all_vertices.append(person["pred_vertices"])
             all_cam_t.append(person["pred_cam_t"])
 
-            kp = person["pred_keypoints_2d"]
-            # MHR70 joints are in 3D from the model
             if "pred_keypoints_3d" in person:
                 all_joints.append(person["pred_keypoints_3d"])
             else:
-                all_joints.append(kp)
+                all_joints.append(person["pred_keypoints_2d"])
 
             if "pred_pose" in person:
                 all_pose.append(person["pred_pose"])
@@ -139,23 +138,106 @@ def process_clip(
             if focal_length is None:
                 focal_length = person.get("focal_length", 5000.0)
 
-        frame_idx += 1
+    cap.release()
+    return _build_mesh_data(all_vertices, all_joints, all_pose, all_cam_t,
+                            shape_params, focal_length, total_ms)
+
+
+# ---------------------------------------------------------------------------
+# Backend: MLX (Apple Silicon native)
+# ---------------------------------------------------------------------------
+
+def load_model_mlx(weights_dir: str = "/tmp/sam3d-mlx-weights/"):
+    """Load MLX SAM 3D Body estimator."""
+    from sam3d_mlx.estimator import SAM3DBodyEstimator
+
+    print(f"Loading SAM 3D Body (MLX) from {weights_dir}...")
+    t0 = time.time()
+    estimator = SAM3DBodyEstimator(weights_dir)
+    print(f"Model loaded in {time.time() - t0:.1f}s")
+
+    # Warm up person detector
+    from sam3d_mlx.estimator import detect_persons_cached
+    detect_persons_cached(np.zeros((100, 100, 3), dtype=np.uint8))
+
+    return estimator
+
+
+def process_clip_mlx(
+    video_path: str,
+    estimator,
+    det_threshold: float = 0.5,
+) -> tuple[MeshData | None, float]:
+    """Run MLX inference on a single clip."""
+    from sam3d_mlx.estimator import detect_persons_cached
+
+    cap = cv2.VideoCapture(video_path)
+    if not cap.isOpened():
+        print(f"  Cannot open {video_path}")
+        return None, 0.0
+
+    width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+    height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+    all_vertices = []
+    all_joints = []
+    all_pose = []
+    all_cam_t = []
+    shape_params = None
+    total_ms = 0.0
+
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+
+        rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+
+        # Detect person
+        detections = detect_persons_cached(rgb, threshold=det_threshold)
+        bbox = detections[0] if detections else [0, 0, width, height]
+
+        t0 = time.perf_counter()
+        result = estimator.predict(rgb, bbox, auto_detect=False)
+        elapsed = (time.perf_counter() - t0) * 1000
+        total_ms += elapsed
+
+        all_vertices.append(result["pred_vertices"])
+        all_joints.append(result["pred_keypoints_3d"])
+        all_cam_t.append(result["pred_camera"])
+        all_pose.append(result["pred_pose"])
+
+        if shape_params is None:
+            shape_params = result["pred_shape"]
 
     cap.release()
 
+    # Focal length: MLX uses image diagonal as default
+    focal_length = math.sqrt(height**2 + width**2)
+
+    return _build_mesh_data(all_vertices, all_joints, all_pose, all_cam_t,
+                            shape_params, focal_length, total_ms)
+
+
+# ---------------------------------------------------------------------------
+# Shared MeshData builder
+# ---------------------------------------------------------------------------
+
+def _build_mesh_data(
+    all_vertices, all_joints, all_pose, all_cam_t,
+    shape_params, focal_length, total_ms,
+) -> tuple[MeshData | None, float]:
+    """Build MeshData from per-frame arrays collected by either backend."""
     if not all_vertices:
         return None, total_ms
 
-    vertices = np.stack(all_vertices)  # (T, N, 3)
-    cam_t = np.stack(all_cam_t)        # (T, 3)
+    vertices = np.stack(all_vertices)
+    cam_t = np.stack(all_cam_t)
 
-    # Joints: use 3D keypoints, fall back to 2D
     joints = np.stack(all_joints) if all_joints else np.zeros((len(all_vertices), 70, 3))
     if joints.shape[-1] == 2:
-        # Pad 2D to 3D with zeros
         joints = np.concatenate([joints, np.zeros((*joints.shape[:-1], 1))], axis=-1)
 
-    # Pose params
     if all_pose:
         pose_params = np.stack(all_pose)
     else:
@@ -182,7 +264,12 @@ def main():
     parser.add_argument("--reprocess", action="store_true", help="Re-run inference even if mesh exists")
     parser.add_argument("--db", type=str, default="data/pitches.db")
     parser.add_argument("--mesh-dir", type=str, default="data/meshes")
-    parser.add_argument("--device", type=str, default="mps")
+    parser.add_argument("--backend", choices=["pytorch", "mlx"], default="mlx",
+                        help="Inference backend (default: mlx)")
+    parser.add_argument("--device", type=str, default="mps",
+                        help="PyTorch device (ignored for MLX)")
+    parser.add_argument("--weights", type=str, default=None,
+                        help="Weights path (default depends on backend)")
     parser.add_argument("--det-threshold", type=float, default=0.5)
     args = parser.parse_args()
 
@@ -210,16 +297,22 @@ def main():
         print("No pitches to process.")
         sys.exit(0)
 
+    print(f"Backend: {args.backend}")
     print(f"Pitches to process: {len(pitches)}")
 
-    # Estimate time
-    est_frames = len(pitches) * 370  # ~370 frames per 6s clip at 60fps
-    est_minutes = (est_frames * 0.67) / 60  # 670ms/frame
-    print(f"Estimated time: ~{est_minutes:.0f} minutes ({est_frames} frames at ~670ms/frame)")
+    est_frames = len(pitches) * 370
+    est_ms_per_frame = 670 if args.backend == "pytorch" else 900
+    est_minutes = (est_frames * est_ms_per_frame / 1000) / 60
+    print(f"Estimated time: ~{est_minutes:.0f} minutes ({est_frames} frames at ~{est_ms_per_frame}ms/frame)")
     print()
 
     # Load model once
-    estimator, detector, device = load_model(device=args.device)
+    if args.backend == "mlx":
+        weights = args.weights or "/tmp/sam3d-mlx-weights/"
+        estimator = load_model_mlx(weights)
+        detector = device = None
+    else:
+        estimator, detector, device = load_model_pytorch(device=args.device)
     print()
 
     total_start = time.time()
@@ -240,9 +333,14 @@ def main():
             failed += 1
             continue
 
-        mesh, inference_ms = process_clip(
-            vpath, estimator, detector, device, args.det_threshold
-        )
+        if args.backend == "mlx":
+            mesh, inference_ms = process_clip_mlx(
+                vpath, estimator, args.det_threshold
+            )
+        else:
+            mesh, inference_ms = process_clip_pytorch(
+                vpath, estimator, detector, device, args.det_threshold
+            )
 
         if mesh is None:
             print(f"  No body detected")
@@ -257,7 +355,7 @@ def main():
 
     elapsed = time.time() - total_start
     print(f"\n{'='*60}")
-    print(f"Batch complete")
+    print(f"Batch complete ({args.backend})")
     print(f"{'='*60}")
     print(f"  Processed: {processed}/{len(pitches)}")
     print(f"  Failed:    {failed}")

@@ -229,6 +229,8 @@ class SAM3DBodyEstimator:
             body_output["pred_vertices"],
             body_output["pred_keypoints_3d"],
             body_output["pred_joint_coords"],
+            body_output["pred_model_params"],
+            body_output["pred_shape"],
             pred_cam,
         )
 
@@ -237,6 +239,8 @@ class SAM3DBodyEstimator:
             "pred_keypoints_3d": np.array(body_output["pred_keypoints_3d"][0]),
             "pred_joint_coords": np.array(body_output["pred_joint_coords"][0]),
             "pred_camera": np.array(pred_cam[0]),
+            "pred_pose": np.array(body_output["pred_model_params"][0, :136]),
+            "pred_shape": np.array(body_output["pred_shape"][0]),
             "bbox": bbox,
         }
 
