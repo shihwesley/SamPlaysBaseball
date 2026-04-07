@@ -22,3 +22,7 @@ anthropic>=0.18
 reportlab>=4.0
 jinja2>=3.1
 httpx>=0.25
+
+# On-device inference: SAM 3.1 (pitcher detection in trim pipeline) +
+# Gemma 4 E4B (NL query parser). Apple Silicon only.
+mlx-vlm>=0.4.4

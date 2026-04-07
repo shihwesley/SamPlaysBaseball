@@ -37,6 +37,89 @@ from backend.app.data.pitch_db import PitchDB, MeshData
 
 
 # ---------------------------------------------------------------------------
+# Detection continuity (shared by both backends)
+# ---------------------------------------------------------------------------
+#
+# Original behavior was "pick the largest detection per frame", which on
+# baseball clips can flip between pitcher / catcher / batter / umpire as
+# the silhouettes change during the windup. That flip causes the model to
+# regress a body in a different orientation for a few frames, then snap
+# back when the largest detection becomes the pitcher again — the exact
+# "good → wrong → good" jank we see in Blender.
+#
+# _select_bbox locks onto whichever person we picked on the first valid
+# frame, then on every subsequent frame chooses the candidate whose center
+# is closest to the previous bbox's center. If all candidates jump too far
+# (more than max_jump_frac * frame_width away), we keep the previous bbox
+# rather than swapping people.
+
+def _resolve_clip_path(db_path: str) -> tuple[str, bool]:
+    """Prefer a sibling `_trimmed.mp4` if one exists.
+
+    PitchDB stores the raw video path from the fetch manifest. The trim
+    pipeline (fetch_savant_clips.py:_trim_clip) writes `foo_trimmed.mp4`
+    alongside `foo.mp4`. Inference should always use the trimmed file when
+    it's available — fewer frames, no broadcast-cut garbage.
+
+    Returns (resolved_path, used_trimmed).
+    """
+    raw = Path(db_path)
+    trimmed = raw.with_name(raw.stem + "_trimmed.mp4")
+    if trimmed.exists() and trimmed.stat().st_size > 10_000:
+        return str(trimmed), True
+    return str(raw), False
+
+
+def _bbox_center(box):
+    return (0.5 * (box[0] + box[2]), 0.5 * (box[1] + box[3]))
+
+
+def _select_bbox(
+    detections,
+    prev_bbox,
+    frame_w: int,
+    frame_h: int,
+    max_jump_frac: float = 0.30,
+):
+    """Pick the detection box that continues the same subject across frames.
+
+    detections: list of [x1, y1, x2, y2] candidate boxes (any order).
+    prev_bbox:  the box used on the previous frame, or None on the first frame.
+    Returns:    a single [x1, y1, x2, y2] box (or prev_bbox if all candidates
+                are too far away). On the first frame with no detections, falls
+                back to the full image so the model still has something to chew
+                on instead of crashing.
+    """
+    if not detections:
+        if prev_bbox is not None:
+            return prev_bbox
+        return [0, 0, frame_w, frame_h]
+
+    if prev_bbox is None:
+        # First frame: pick the largest box (matches the old default).
+        return max(
+            detections,
+            key=lambda b: (b[2] - b[0]) * (b[3] - b[1]),
+        )
+
+    px, py = _bbox_center(prev_bbox)
+    max_jump_sq = (max_jump_frac * frame_w) ** 2
+
+    best = None
+    best_d2 = float("inf")
+    for box in detections:
+        cx, cy = _bbox_center(box)
+        d2 = (cx - px) ** 2 + (cy - py) ** 2
+        if d2 < best_d2:
+            best_d2 = d2
+            best = box
+
+    if best is None or best_d2 > max_jump_sq:
+        return prev_bbox  # Stay locked rather than jumping to a different person.
+    return best
+
+
+# ---------------------------------------------------------------------------
 # Backend: PyTorch / MPS
 # ---------------------------------------------------------------------------
 
@@ -82,6 +165,7 @@ def process_clip_pytorch(
 
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    source_fps = float(cap.get(cv2.CAP_PROP_FPS) or 0.0) or None
 
     all_vertices = []
     all_joints = []
@@ -90,6 +174,7 @@ def process_clip_pytorch(
     shape_params = None
     focal_length = None
     total_ms = 0.0
+    prev_bbox = None  # detection-continuity tracker (see _select_bbox)
 
     while True:
         ret, frame = cap.read()
@@ -106,14 +191,11 @@ def process_clip_pytorch(
         scores = preds["scores"][person_mask]
         boxes = preds["boxes"][person_mask]
         keep = scores > det_threshold
-        boxes_np = boxes[keep].cpu().numpy()
+        candidates = boxes[keep].cpu().numpy().tolist()
 
-        if len(boxes_np) == 0:
-            boxes_np = np.array([[0, 0, width, height]])
-
-        areas = (boxes_np[:, 2] - boxes_np[:, 0]) * (boxes_np[:, 3] - boxes_np[:, 1])
-        best = np.argmax(areas)
-        bbox = boxes_np[best:best+1]
+        chosen = _select_bbox(candidates, prev_bbox, width, height)
+        prev_bbox = chosen
+        bbox = np.array([chosen], dtype=np.float32)
 
         t0 = time.perf_counter()
         outputs = estimator.process_one_image(rgb, bboxes=bbox, inference_type="body")
@@ -140,7 +222,8 @@ def process_clip_pytorch(
 
     cap.release()
     return _build_mesh_data(all_vertices, all_joints, all_pose, all_cam_t,
-                            shape_params, focal_length, total_ms)
+                            shape_params, focal_length, total_ms,
+                            source_fps=source_fps)
 
 
 # ---------------------------------------------------------------------------
@@ -178,6 +261,7 @@ def process_clip_mlx(
 
     width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+    source_fps = float(cap.get(cv2.CAP_PROP_FPS) or 0.0) or None
 
     all_vertices = []
     all_joints = []
@@ -185,6 +269,7 @@ def process_clip_mlx(
     all_cam_t = []
     shape_params = None
     total_ms = 0.0
+    prev_bbox = None  # detection-continuity tracker (see _select_bbox)
 
     while True:
         ret, frame = cap.read()
@@ -193,9 +278,10 @@ def process_clip_mlx(
 
         rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
-        # Detect person
+        # Detect persons, then lock onto the same one across frames.
         detections = detect_persons_cached(rgb, threshold=det_threshold)
-        bbox = detections[0] if detections else [0, 0, width, height]
+        bbox = _select_bbox(detections, prev_bbox, width, height)
+        prev_bbox = bbox
 
         t0 = time.perf_counter()
         result = estimator.predict(rgb, bbox, auto_detect=False)
@@ -216,7 +302,8 @@ def process_clip_mlx(
     focal_length = math.sqrt(height**2 + width**2)
 
     return _build_mesh_data(all_vertices, all_joints, all_pose, all_cam_t,
-                            shape_params, focal_length, total_ms)
+                            shape_params, focal_length, total_ms,
+                            source_fps=source_fps)
 
 
 # ---------------------------------------------------------------------------
@@ -226,6 +313,7 @@ def process_clip_mlx(
 def _build_mesh_data(
     all_vertices, all_joints, all_pose, all_cam_t,
     shape_params, focal_length, total_ms,
+    source_fps: float | None = None,
 ) -> tuple[MeshData | None, float]:
     """Build MeshData from per-frame arrays collected by either backend."""
     if not all_vertices:
@@ -253,6 +341,7 @@ def _build_mesh_data(
         shape_params=shape_params,
         cam_t=cam_t,
         focal_length=float(focal_length) if focal_length is not None else 5000.0,
+        source_fps=source_fps,
     )
     return mesh, total_ms
 
@@ -321,12 +410,16 @@ def main():
 
     for i, pitch in enumerate(pitches):
         play_id = pitch["play_id"]
-        vpath = pitch["video_path"]
+        raw_vpath = pitch["video_path"]
         ptype = pitch["pitch_type"] or "?"
         inn = pitch["inning"]
         batter = pitch["batter_name"] or "?"
 
         print(f"[{i+1}/{len(pitches)}] Inn {inn} | {ptype} → {batter} ({play_id[:8]})")
+
+        vpath, used_trimmed = _resolve_clip_path(raw_vpath)
+        if used_trimmed:
+            print(f"  using trimmed clip: {Path(vpath).name}")
 
         if not Path(vpath).exists():
             print(f"  Video missing: {vpath}")

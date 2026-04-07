@@ -77,6 +77,10 @@ class PitchClip:
     events: str | None  # strikeout, home_run, etc. (only on last pitch of AB)
     video_url: str
     video_path: str | None = None  # set after download
+    trimmed_video_path: str | None = None  # set after trim
+    trim_start_frame: int | None = None
+    trim_end_frame: int | None = None
+    trim_confidence: float | None = None
 
 
 def _fetch_url(url: str, headers: dict | None = None) -> str:
@@ -84,6 +88,66 @@ def _fetch_url(url: str, headers: dict | None = None) -> str:
     req = Request(url, headers=headers or DOWNLOAD_HEADERS)
     with urlopen(req, timeout=30) as resp:
         return resp.read().decode("utf-8")
+
+
+def _trim_clip(raw_path: Path) -> tuple[Path | None, dict | None]:
+    """Run delivery-window detection + write trimmed clip.
+
+    Returns (trimmed_path, window_dict) on success, (None, None) on failure.
+    Failure is logged and swallowed — the raw clip stays usable.
+    """
+    trimmed_path = raw_path.with_name(raw_path.stem + "_trimmed.mp4")
+    if trimmed_path.exists() and trimmed_path.stat().st_size > 10_000:
+        logger.info("    trim: already exists → %s", trimmed_path.name)
+        return trimmed_path, None
+
+    # Lazy import: keeps this script usable (e.g. --help, resolve_pitcher)
+    # without loading mlx-vlm on every invocation.
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+    try:
+        from backend.app.pipeline.delivery_window import (
+            find_delivery_window,
+            write_trimmed_clip,
+        )
+    except ImportError as e:
+        logger.warning("    trim: delivery_window import failed: %s", e)
+        return None, None
+
+    try:
+        window = find_delivery_window(raw_path)
+    except Exception as e:
+        logger.warning("    trim: detection failed: %s", e)
+        return None, None
+
+    if window.confidence < 0.3 or window.set_frame is None:
+        logger.warning(
+            "    trim: low confidence (%.2f) — skipping trim, raw clip kept",
+            window.confidence,
+        )
+        return None, window.to_dict()
+
+    try:
+        write_trimmed_clip(
+            raw_path,
+            trimmed_path,
+            window.start_frame,
+            window.end_frame,
+        )
+    except Exception as e:
+        logger.warning("    trim: write failed: %s", e)
+        return None, window.to_dict()
+
+    logger.info(
+        "    trim: [%d, %d) kept %d frames (%.1fs), cut=%s, conf=%.2f",
+        window.start_frame,
+        window.end_frame,
+        window.n_frames,
+        window.duration_seconds,
+        window.scene_cut_frame,
+        window.confidence,
+    )
+    return trimmed_path, window.to_dict()
 
 
 def _download_clip(sporty_url: str, dest: Path) -> bool:
@@ -248,6 +312,18 @@ def fetch_game_clips(
 
             if delay > 0 and i < len(pitch_entries) - 1:
                 time.sleep(delay)
+
+        # Trim to the delivery window so downstream inference sees only
+        # the pitcher-cam portion of the broadcast. Unconditional per
+        # docs/plans/2026-04-07-trim-pipeline-state.md.
+        if clip.video_path:
+            trimmed_path, window_dict = _trim_clip(Path(clip.video_path))
+            if trimmed_path is not None:
+                clip.trimmed_video_path = str(trimmed_path)
+            if window_dict is not None:
+                clip.trim_start_frame = window_dict.get("start_frame")
+                clip.trim_end_frame = window_dict.get("end_frame")
+                clip.trim_confidence = window_dict.get("confidence")
 
         clips.append(clip)
 
