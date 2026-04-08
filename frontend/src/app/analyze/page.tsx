@@ -10,6 +10,7 @@ import SpeedControl from '@/components/three/SpeedControl'
 import {
   submitQuery,
   pollQueryStatus,
+  openInBlender,
   API_BASE,
   type QueryResponse,
   type ProgressResponse,
@@ -37,6 +38,10 @@ export default function AnalyzePage() {
   const [showGhost, setShowGhost] = useState(true)
   const [playbackSpeed, setPlaybackSpeed] = useState(1)
   const [selectedJoint, setSelectedJoint] = useState<number | null>(null)
+
+  // Blender launch state
+  const [blenderLaunching, setBlenderLaunching] = useState(false)
+  const [blenderError, setBlenderError] = useState<string | null>(null)
 
   // Clean up polling on unmount
   useEffect(() => {
@@ -89,7 +94,22 @@ export default function AnalyzePage() {
     }
   }, [])
 
+  const handleOpenInBlender = useCallback(async () => {
+    const playId = result?.query?.pitches_used?.[0]
+    if (!playId) return
+    setBlenderLaunching(true)
+    setBlenderError(null)
+    try {
+      await openInBlender(playId)
+    } catch (e) {
+      setBlenderError(e instanceof Error ? e.message : 'Failed to launch Blender')
+    } finally {
+      setBlenderLaunching(false)
+    }
+  }, [result])
+
   const glbUrl = result?.viewer.glb_url ? API_BASE + result.viewer.glb_url : null
+  const firstPlayId = result?.query?.pitches_used?.[0] ?? null
   const phaseMarkers = result?.viewer.phase_markers ?? {}
   const totalFrames = result?.viewer.total_frames ?? 0
 
@@ -121,18 +141,40 @@ export default function AnalyzePage() {
                 onPresetChange={setCameraPreset}
                 currentPreset={cameraPreset}
               />
-              <button
-                onClick={() => setShowGhost(!showGhost)}
-                className={
-                  'px-3 py-1 rounded text-xs font-medium transition-colors ' +
-                  (showGhost
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-[#1a1a1a] text-gray-400 hover:bg-[#2a2a2a] border border-[#2a2a2a]')
-                }
-              >
-                Ghost
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setShowGhost(!showGhost)}
+                  className={
+                    'px-3 py-1 rounded text-xs font-medium transition-colors ' +
+                    (showGhost
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-[#1a1a1a] text-gray-400 hover:bg-[#2a2a2a] border border-[#2a2a2a]')
+                  }
+                >
+                  Ghost
+                </button>
+                <button
+                  onClick={handleOpenInBlender}
+                  disabled={!firstPlayId || blenderLaunching}
+                  title={
+                    firstPlayId
+                      ? 'Open this pitch\u2019s .npz mesh in Blender for review'
+                      : 'No pitch selected'
+                  }
+                  className={
+                    'px-3 py-1 rounded text-xs font-medium transition-colors ' +
+                    (!firstPlayId || blenderLaunching
+                      ? 'bg-[#1a1a1a] text-gray-600 border border-[#2a2a2a] cursor-not-allowed'
+                      : 'bg-[#1a1a1a] text-orange-300 hover:bg-[#2a2a2a] border border-orange-900/50')
+                  }
+                >
+                  {blenderLaunching ? 'Launching\u2026' : 'Open in Blender'}
+                </button>
+              </div>
             </div>
+            {blenderError && (
+              <div className="text-xs text-red-400 -mt-1">{blenderError}</div>
+            )}
 
             {/* 3D canvas */}
             <div className="w-full aspect-[4/3] rounded-lg overflow-hidden border border-[#2a2a2a]">

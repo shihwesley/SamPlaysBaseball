@@ -115,6 +115,19 @@ export const submitQuery = (text: string, gameDate?: string) =>
     body: JSON.stringify({ text, game_date: gameDate ?? null }),
   })
 
+export type BlenderOpenResponse = {
+  status: string
+  mesh_path: string
+  pid: number
+  blender_bin: string
+}
+
+export const openInBlender = (playId: string) =>
+  apiFetch<BlenderOpenResponse>('/api/blender/open', {
+    method: 'POST',
+    body: JSON.stringify({ play_id: playId }),
+  })
+
 export const pollQueryStatus = (token: string) =>
   apiFetch<{ status: string; result?: QueryResponse; progress?: Record<string, unknown> }>(
     '/api/query/' + token + '/status',

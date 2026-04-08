@@ -1,5 +1,125 @@
 # Progress Log
 
+## Session: 2026-04-07 — Strategic Pivot to Tipping-Confirmation Demo
+
+### Decision
+After a CEO-style review of the full app, the project pivoted from "9 analysis modules
+in a War Room dashboard for MLB player development" to "post-game tipping-confirmation
+tool for analysts and coaches who don't have stadium-installed mocap." Goal: land an
+MLB player-dev role via a single high-impact demo + blog post + upstream MLX port.
+
+### Why
+- The depth-axis ambiguity of single-camera SAM 3D Body fundamentally limits absolute
+  biomechanical claims (release point Z, arm slot in degrees, hip-shoulder separation).
+- 5 of the 9 analysis modules shipped without external validation. Specifically
+  tipping/fatigue/command/injury-risk relied on inputs that aren't trustworthy enough
+  for credible coach-facing claims.
+- Tipping detection IS defensible if reframed as post-game confirmation of what a coach
+  already saw — the in-plane body-posture differences (glove height, shoulder set, hand
+  placement) are exactly the signals where single-camera 3D body modeling is reliable.
+
+### Demo target locked
+**Yu Darvish — 2017 World Series Game 7 — game_pk 526517**
+
+The Astros allegedly picked up a slider tip during this start. Verified via Savant:
+- 47 Darvish pitches in WS G7, all 47 with downloadable play_ids
+- Pitch mix: FF=13, ST=17, FC=5, CU=7, SI=3, CH=2
+- Control game: **2017-09-19 vs Phillies, game_pk 492355** (FF=21 / ST=21, no allegations)
+- Both games' clips download cleanly via `--angle HOME`
+
+### Pipeline sanity check on 2017 broadcast footage — PASSED
+- Downloaded one Darvish CH pitch (`b69a4fbd...`) at 1280x720, 29.97 fps, 300 frames
+- Ran SAM 3D Body MLX inference: 150.7s for 300 frames (2.0 fps as spec'd)
+- Mesh shape: (300, 18439, 3); joints_mhr70: (300, 70, 3); no NaN/inf
+- Body bbox diagonal at frame 0 = **1.938m** (matches Darvish's 1.96m height almost exactly)
+- Body-center travel across 300 frames = 0.843m (consistent with a pitcher's stride, far
+  too much for a static catcher/umpire) → confirms model locked onto Darvish, not bystanders
+- Visual confirmation: extracted frame 90 shows Darvish on the mound, Correa batting,
+  FOX WS broadcast lower-third reading "Darvish 1.0 IP, 10 P" (the alleged tipping window)
+
+### Fetch script bug found
+`scripts/fetch_savant_clips.py` defaults to `--angle AWAY`, which returns no MP4 for
+2017 postseason play_ids. Savant only kept HOME-feed clips for older games. Workaround:
+pass `--angle HOME` explicitly. Permanent fix: make the default fall back through
+HOME → CMS_NATIONAL → NETWORK → AWAY automatically. **Logged in TODOS for next session.**
+
+### Code changes shipped
+| Change | File(s) |
+|--------|---------|
+| `tipping_detection` repositioned + new `compare_within_outing()` post-game entry point | `backend/app/analysis/tipping.py` |
+| `fatigue_tracking` unwired from API + reports (`.py` preserved) | `backend/app/api/analysis.py`, `backend/app/reports/generator.py` |
+| `command_analysis` unwired from API + reports (`.py` preserved) | same |
+| `injury_risk` unwired from API + reports + recommendations (`.py` preserved) | same |
+| Query parser concern enum: dropped fatigue/command, kept tipping, added release_consistency | `backend/app/query/parser.py` |
+| `historical-legends` spec deleted; manifest updated | `docs/plans/specs/historical-legends-spec.md`, `docs/plans/manifest.md` |
+| `VALIDATION.md` written from scratch — what's trustworthy, what isn't, literature-cited | `VALIDATION.md` |
+| `README.md` rewritten as product story with the tipping-confirmation use case as the headline | `README.md` |
+| Manifest status flags: 4 modules marked **deferred** with revival path notes | `docs/plans/manifest.md` |
+| Test fix: `test_generate_outing_report` asserts `arm_slot` instead of `fatigue` | `backend/tests/test_reports.py` |
+
+### Remaining for the demo phase
+1. Visual mesh inspection of the existing Darvish CH inference (geometry sanity check, left/right joint swap check) — DONE in afternoon session
+2. Run full WS G7 batch inference (47 pitches, ~120 min) + full Sep 19 control batch (97 pitches, ~240 min)
+3. Finish blender-render spec and build the side-by-side comparison render with delta annotation
+4. Record the 60-90 second demo video
+5. Write the companion blog post
+6. Release: LinkedIn, Twitter, r/baseball, targeted MLB cold emails
+
+---
+
+## Session: 2026-04-07 (afternoon) — SAM 3.1 Trim Pipeline
+
+### Driving question
+The morning's pipeline check on the in-play CH clip (b69a4fbd) revealed via the 2D-overlay video that the broadcast cuts from pitcher cam to wide field shot ~5 seconds into every hit-into-play pitch. The model was tracking a fielder in frames 155-300 of that clip — invisible in the matplotlib joint inspection because joint coordinates alone don't tell you which person they belong to. **We needed a robust per-clip trim step that works across 2017 (30fps) and modern (60fps) broadcasts and across hit-into-play vs no-contact pitch outcomes.**
+
+### Architecture decision
+- Trimming = Stage 1 of the data pipeline. Runs at DOWNLOAD time (in `fetch_savant_clips.py`), not inference time. The trimmed `.mp4` is what gets stored in the manifest and the DB. `batch_inference.py` reads the trimmed file with no awareness of the trim step. No `--auto-trim` flag — trimming is unconditional.
+- Two-signal detector design: SAM 3.1 (semantic, "is this a pitcher") + cv2 histogram diff (structural, "did the camera cut"). Each tool used for what it's best at. ~3-5s per clip vs naive uniform sampling at ~60s. **12x speedup.**
+
+### What was built
+| Component | File | Lines | Status |
+|-----------|------|-------|--------|
+| `Sam31PitcherDetector` wrapper class | `sam3d_mlx/sam31_detector.py` | 208 | shipped |
+| `find_delivery_window()` + `write_trimmed_clip()` | `backend/app/pipeline/delivery_window.py` | 380 | shipped (refactored once) |
+| `scripts/test_sam31_on_darvish.py` | one-shot SAM 3.1 sanity check | 90 | shipped |
+| `scripts/test_delivery_window.py` | end-to-end trim test runner | 60 | shipped |
+
+### Validation milestones
+- **mlx-vlm 0.4.4 installed** via `pip install --break-system-packages mlx-vlm`. Pulled in transformers 5.5, mlx-lm 0.31, hf-hub 1.9, opencv 4.13. Model weights `mlx-community/sam3.1-bf16` cached locally (~1-2 GB).
+- **SAM 3.1 confirmed working on 2017 broadcast frame**: prompt "a person in a baseball uniform" returned 5 detections (scores 0.85, 0.80, 0.78, 0.72, 0.37) cleanly identifying pitcher, batter, catcher, umpire. Crowd correctly excluded by language grounding.
+- **Geometric pitcher tiebreaker calibrated** against the Darvish frame. Tightened from `(center_y >= 0.40, height_frac >= 0.15)` to `(center_y >= 0.55, height_frac >= 0.35)`. Cleanly excludes catcher, umpire, batter, and field-action runners.
+- **Trim pipeline validated on both Darvish CH clips**:
+  - In-play CH (b69a4fbd, "out(s)" outcome, broadcast cut at frame 155): trim window [0, 150). Visual confirmation: end frame shows Darvish in follow-through at moment of contact, NOT field action. Data-driven end-frame logic respected the broadcast cut.
+  - Ball CH (dd857f31, "Ball" outcome, no broadcast cut): trim window [0, 150). Visual confirmation: end frame shows Darvish at delivery completion with ball traveling to plate. Biomechanical 5s cap correctly limited the trim even though SAM 3.1 detected Darvish through frame 250+.
+- **Algorithm refactored to early-exit + cv2 scene cut** halfway through the session. Speed dropped from 65.6s to 11.7s per clip (5.6x). After fixing the scene-cut threshold (0.55 → 0.85), expected to drop further to ~3-5s.
+
+### Calibration measurements
+- Histogram correlations in pitcher-cam frames: 0.99-1.00 mean, very stable
+- Broadcast cut signature: drop to 0.649 at frame 155 of the Darvish in-play clip
+- Optimal scene-cut threshold: **0.85** (between cut and noise floor)
+- Original threshold 0.55 (literature default for scene detection) FAILED to catch the cut
+
+### Open at end of session (must address in next session)
+1. **Refactored delivery_window not yet re-tested** with the new thresholds (`min_consecutive=1` and `_HIST_CORR_CUT_THRESHOLD=0.85`). Edited but not validated. **First task in the next session.**
+2. **fetch_savant_clips.py integration not done** (task #23) — wire `find_delivery_window` + `write_trimmed_clip` into the download flow.
+3. **mlx-vlm not pinned in requirements.txt** (task #19).
+4. **Unit tests for delivery_window not written** (task #15).
+5. **No end-to-end SAM 3D Body inference on a trimmed clip yet** (task #21).
+
+### Files changed this session (afternoon)
+- New: `sam3d_mlx/sam31_detector.py`, `backend/app/pipeline/delivery_window.py`, `scripts/test_sam31_on_darvish.py`, `scripts/test_delivery_window.py`
+- Modified: (none beyond the new files)
+- Generated artifacts: `data/clips/526517/inn1_ab4_p1_CH_b69a4fbd_trimmed.mp4`, `inn1_ab5_p1_CH_dd857f31_trimmed.mp4`, `_sam31_test.png`, `_trimmed_v2_end.jpg`, `_ball_trim_{start,mid,end}.jpg`
+
+### Where the next session picks up
+1. Re-run `python scripts/test_delivery_window.py` on the in-play CH clip with the freshly-edited thresholds. Expected: trim window [0, 155) (set_frame=6, scene cut at 155). If it lands there, the refactor is fully validated.
+2. Then re-run on the Ball CH clip. Expected: trim window [0, 150) (set_frame=0, biomech cap).
+3. Then integrate trimmer into fetch_savant_clips.py (task #23).
+4. Then run end-to-end SAM 3D Body inference on a trimmed clip (task #21).
+5. Then pin mlx-vlm in requirements.txt + add unit tests + the long-running batch inference work.
+
+---
+
 ## Session: 2026-04-05 (continued)
 
 ### Milestones

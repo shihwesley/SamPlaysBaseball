@@ -186,7 +186,10 @@ def test_generate_outing_report(storage):
 
     assert report.report_type == "outing"
     assert report.pitcher_id == "p1"
-    assert "fatigue" in report.sections
+    # As of the 2026-04-07 strategic pivot, outing reports focus on arm_slot
+    # (release-window consistency). Fatigue has been moved to Future Biomechanics
+    # Work — see VALIDATION.md.
+    assert "arm_slot" in report.sections
 
 
 def test_generate_pitch_type_report(storage):

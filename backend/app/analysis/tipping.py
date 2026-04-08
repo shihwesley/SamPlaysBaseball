@@ -1,4 +1,38 @@
-"""Tipping detection: identify mechanical tells that leak pitch type pre-release."""
+"""Tipping confirmation: post-game pairwise comparison of deliveries by pitch type.
+
+This module is a **post-game confirmation tool**, not an in-game predictor.
+
+Use case: A coach (yours or the opposing team's) sees something live during a game and
+suspects the pitcher is tipping a pitch type via body posture, glove position, hand
+placement, or pre-delivery rhythm. After the game, the analyst runs this module against
+that outing, grouped by pitch type, to surface the *measurable* in-plane body-posture
+differences between the suspect pitch type and the rest. The output is something
+concrete to show the player: "Frame 24, your glove sits 4 cm lower on your slider
+deliveries than on your fastball deliveries. Here it is, side by side."
+
+The historic example this tool was designed to confirm: Yu Darvish, 2017 World Series,
+Game 7. The Astros bench reportedly picked up a pre-delivery tell on his slider/sweeper.
+Run this module against game_pk 526517 grouped by pitch type to see the measurable
+mechanical evidence frame by frame.
+
+The classifier-based `TippingDetector.train()` path is preserved for legacy callers and
+can still be used when at least 50 labeled pitches are available, but the **primary**
+entry point for the post-game confirmation use case is `compare_within_outing()`, which
+uses pairwise delivery comparison and does not require a trained model.
+
+Note on what this can and cannot detect:
+- DETECTS in-plane body-posture differences (glove height, shoulder set, hand placement,
+  pre-delivery rhythm differences, head/torso lean) — these are exactly the signals
+  where a single broadcast camera is most reliable.
+- CANNOT detect grip-visible-in-glove tells (the actual 2017 Astros method) — that
+  requires a center-field zoom on the pitcher's glove that is not in standard broadcast
+  feeds.
+- CANNOT predict tipping in advance — the human observer provides the hypothesis;
+  this tool quantifies and locates it.
+
+See VALIDATION.md for the full discussion of confidence levels and what is and is not
+trustworthy in this output.
+"""
 
 from __future__ import annotations
 
@@ -10,6 +44,10 @@ from backend.app.pipeline.features import BiomechFeatures
 
 _MIN_PITCHES = 50
 _TIPPING_MARGIN = 0.05
+
+# Minimum sample size per pitch type for the post-game confirmation comparison.
+# Below this, the in-plane delta numbers are too noisy to interpret as a real tell.
+_MIN_PER_TYPE_FOR_CONFIRMATION = 5
 
 
 def _pre_release_features(f: BiomechFeatures) -> dict[str, float]:
@@ -140,3 +178,137 @@ class TippingDetector:
             max_separation_score=max_sep,
             is_tipping=is_tipping,
         )
+
+
+# ---------------------------------------------------------------------------
+# Post-game confirmation entry point (PRIMARY use case)
+# ---------------------------------------------------------------------------
+
+def compare_within_outing(
+    features_by_pitch_type: dict[str, list[BiomechFeatures]],
+    suspect_pitch_type: str,
+    reference_pitch_type: str,
+) -> dict:
+    """Compare delivery features between two pitch types within a single outing.
+
+    This is the **primary post-game confirmation entry point** for the tipping use case.
+    Given a coach's hypothesis ("I think he tips his slider when throwing it after a
+    fastball"), pass in the pre-release biomechanical feature dictionaries grouped by
+    pitch type and get back the per-feature mean and std for each group, the in-plane
+    delta, and a normalized "separation z-score" indicating how unlikely the delta is
+    under the null hypothesis of no tipping.
+
+    Returns a dict with:
+        - n_suspect, n_reference: sample sizes
+        - per_feature: {feature_name: {suspect_mean, ref_mean, delta, z_score}}
+        - top_signals: top 3 features ranked by |z_score|
+        - confidence: "high" / "medium" / "low" / "insufficient_data"
+        - notes: list of human-readable observations
+
+    Confidence levels:
+        - "insufficient_data": fewer than 5 pitches in either group
+        - "low": 5-9 per group, deltas exist but cannot rule out noise
+        - "medium": 10+ per group, at least one feature with |z| > 1.5
+        - "high": 10+ per group, at least one feature with |z| > 2.5
+
+    The function does NOT make a binary "is tipping" call — that's a human judgment
+    informed by the numbers, the live observation, and the video review. It returns
+    structured evidence the analyst can show to a coach or player.
+    """
+    suspect_features = features_by_pitch_type.get(suspect_pitch_type, [])
+    reference_features = features_by_pitch_type.get(reference_pitch_type, [])
+    n_suspect = len(suspect_features)
+    n_reference = len(reference_features)
+
+    notes: list[str] = []
+
+    if n_suspect < _MIN_PER_TYPE_FOR_CONFIRMATION or n_reference < _MIN_PER_TYPE_FOR_CONFIRMATION:
+        return {
+            "suspect_pitch_type": suspect_pitch_type,
+            "reference_pitch_type": reference_pitch_type,
+            "n_suspect": n_suspect,
+            "n_reference": n_reference,
+            "per_feature": {},
+            "top_signals": [],
+            "confidence": "insufficient_data",
+            "notes": [
+                f"Need at least {_MIN_PER_TYPE_FOR_CONFIRMATION} pitches per group "
+                f"for a meaningful comparison. Got n_suspect={n_suspect}, "
+                f"n_reference={n_reference}."
+            ],
+        }
+
+    # Extract feature dicts for each delivery
+    suspect_dicts = [_pre_release_features(f) for f in suspect_features]
+    reference_dicts = [_pre_release_features(f) for f in reference_features]
+
+    feature_names = list(suspect_dicts[0].keys())
+
+    per_feature: dict[str, dict] = {}
+    for fname in feature_names:
+        s_vals = np.array([d[fname] for d in suspect_dicts], dtype=np.float64)
+        r_vals = np.array([d[fname] for d in reference_dicts], dtype=np.float64)
+        s_mean = float(s_vals.mean())
+        r_mean = float(r_vals.mean())
+        delta = s_mean - r_mean
+        # Pooled std for the z-score; guard against zero std
+        pooled_std = float(np.sqrt(0.5 * (s_vals.var() + r_vals.var())))
+        z = delta / pooled_std if pooled_std > 1e-9 else 0.0
+        per_feature[fname] = {
+            "suspect_mean": s_mean,
+            "reference_mean": r_mean,
+            "delta": delta,
+            "pooled_std": pooled_std,
+            "z_score": z,
+        }
+
+    # Top signals by absolute z-score
+    ranked = sorted(per_feature.items(), key=lambda kv: abs(kv[1]["z_score"]), reverse=True)
+    top_signals = [
+        {
+            "feature": fname,
+            "delta": vals["delta"],
+            "z_score": vals["z_score"],
+            "suspect_mean": vals["suspect_mean"],
+            "reference_mean": vals["reference_mean"],
+        }
+        for fname, vals in ranked[:3]
+    ]
+
+    # Confidence calibration
+    max_abs_z = max((abs(vals["z_score"]) for vals in per_feature.values()), default=0.0)
+    if min(n_suspect, n_reference) < 10:
+        confidence = "low"
+        notes.append(
+            f"Sample sizes are small (n_suspect={n_suspect}, n_reference={n_reference}). "
+            f"Treat the deltas as suggestive, not confirmed."
+        )
+    elif max_abs_z > 2.5:
+        confidence = "high"
+        notes.append(
+            f"Strong separation: at least one feature has |z|={max_abs_z:.2f}. "
+            f"This is unlikely to be noise alone."
+        )
+    elif max_abs_z > 1.5:
+        confidence = "medium"
+        notes.append(
+            f"Moderate separation: top feature has |z|={max_abs_z:.2f}. "
+            f"Worth showing to a coach for visual confirmation."
+        )
+    else:
+        confidence = "low"
+        notes.append(
+            f"No feature shows strong separation (max |z|={max_abs_z:.2f}). "
+            f"If a coach saw a tell live, it may not be one of these biomechanical features."
+        )
+
+    return {
+        "suspect_pitch_type": suspect_pitch_type,
+        "reference_pitch_type": reference_pitch_type,
+        "n_suspect": n_suspect,
+        "n_reference": n_reference,
+        "per_feature": per_feature,
+        "top_signals": top_signals,
+        "confidence": confidence,
+        "notes": notes,
+    }

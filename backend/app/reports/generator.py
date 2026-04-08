@@ -46,13 +46,13 @@ class ReportGenerator:
             if baseline else {}
         )
 
-        # Aggregate analysis results
+        # Aggregate analysis results.
+        # NOTE: fatigue, command, and injury-risk are no longer aggregated. They live
+        # in backend/app/analysis/ but have been moved to Future Biomechanics Work
+        # (see VALIDATION.md). The user-facing report only includes signals we trust.
         pitch_ids = self.storage.list_pitch_ids(pitcher_id)
         tipping = self._latest(pitch_ids, "tipping-detection")
-        fatigue = self._latest(pitch_ids, "fatigue-tracking")
-        command = self._latest(pitch_ids, "command-analysis")
         arm_slot = self._latest(pitch_ids, "arm-slot-drift")
-        risk_data = self._latest(pitch_ids, "injury-risk")
 
         sections: dict[str, str] = {
             "pitcher_profile": templates.pitcher_profile_section(
@@ -63,15 +63,6 @@ class ReportGenerator:
                 tipping.get("max_separation_score", 0.0) if tipping else 0.0,
                 tipping.get("is_tipping", False) if tipping else False,
             ),
-            "fatigue": templates.fatigue_section(
-                fatigue.get("markers", []) if fatigue else [],
-                fatigue.get("fatigue_score", 0.0) if fatigue else 0.0,
-                fatigue.get("is_fatigued", False) if fatigue else False,
-            ),
-            "command": templates.command_section(
-                command.get("command_score", 0.5) if command else 0.5,
-                command if command else None,
-            ),
             "arm_slot": templates.arm_slot_section(
                 arm_slot.get("drift_degrees") if arm_slot else None,
                 arm_slot.get("baseline_arm_slot_degrees") if arm_slot else None,
@@ -79,22 +70,8 @@ class ReportGenerator:
             ),
         }
 
-        risk_score = 0.0
-        traffic_light = "green"
-        top_factors: list[tuple[str, float]] = []
-        if risk_data:
-            risk_score = risk_data.get("risk_score", 0.0)
-            traffic_light = risk_data.get("traffic_light", "green")
-            factor_values = risk_data.get("factor_values", {})
-            top_factors = sorted(factor_values.items(), key=lambda x: x[1], reverse=True)[:3]
-        sections["injury_risk"] = templates.injury_risk_section(
-            risk_score, traffic_light, top_factors
-        )
-
         narrative = self._build_narrative(sections, pitcher_name or pitcher_id)
-        recommendations = self._build_recommendations(risk_data, {
-            "fatigue_score": fatigue.get("fatigue_score", 0) if fatigue else 0,
-            "command_score": command.get("command_score", 0.5) if command else 0.5,
+        recommendations = self._build_recommendations(None, {
             "is_tipping": tipping.get("is_tipping", False) if tipping else False,
         })
 
@@ -105,7 +82,7 @@ class ReportGenerator:
             sections=sections,
             narrative=narrative,
             recommendations=recommendations,
-            risk_level=traffic_light,
+            risk_level="green",  # Risk-level field preserved for schema compatibility; no inferred risk.
             metadata={
                 "pitch_count": len(pitch_ids),
                 "pitch_types": pitch_types,
@@ -124,22 +101,18 @@ class ReportGenerator:
         baseline = self.storage.load_baseline(pitcher_id)
         pitcher_name = baseline.pitcher_name if baseline else None
 
-        fatigue_results = []
+        # NOTE: fatigue is no longer aggregated in outing reports (deferred to
+        # Future Biomechanics Work; see VALIDATION.md). Outing reports now focus on
+        # release-window consistency via arm slot, which is the most trustworthy
+        # within-outing signal.
         arm_slot_results = []
         for pid in pitch_ids:
-            fatigue_results.extend(self.storage.load_analysis(pid, module="fatigue-tracking"))
             arm_slot_results.extend(self.storage.load_analysis(pid, module="arm-slot-drift"))
 
-        last_fatigue = fatigue_results[-1] if fatigue_results else None
         last_arm_slot = arm_slot_results[-1] if arm_slot_results else None
 
         sections: dict[str, str] = {
             "pitcher_profile": f"Outing: {pitcher_name or pitcher_id} on {outing_date}. {len(pitch_ids)} pitches tracked.",
-            "fatigue": templates.fatigue_section(
-                last_fatigue.get("markers", []) if last_fatigue else [],
-                last_fatigue.get("fatigue_score", 0.0) if last_fatigue else 0.0,
-                last_fatigue.get("is_fatigued", False) if last_fatigue else False,
-            ),
             "arm_slot": templates.arm_slot_section(
                 last_arm_slot.get("drift_degrees") if last_arm_slot else None,
                 last_arm_slot.get("baseline_arm_slot_degrees") if last_arm_slot else None,
@@ -172,23 +145,19 @@ class ReportGenerator:
             ).fetchall()
         pitch_ids = [r["pitch_id"] for r in rows]
 
-        command_results = []
+        # NOTE: command analysis is deferred to Future Biomechanics Work
+        # (see VALIDATION.md). It needs Hawk-Eye trajectory data per pitch to be
+        # validated. Pitch-type reports now focus on timing.
         timing_results = []
         for pid in pitch_ids:
-            command_results.extend(self.storage.load_analysis(pid, module="command-analysis"))
             timing_results.extend(self.storage.load_analysis(pid, module="timing-analysis"))
 
-        last_command = command_results[-1] if command_results else None
         last_timing = timing_results[-1] if timing_results else None
 
         sections: dict[str, str] = {
             "pitcher_profile": templates.pitcher_profile_section(
                 pitcher_id, pitcher_name, [pitch_type],
                 {pitch_type: pt_baseline.sample_count if pt_baseline else len(pitch_ids)},
-            ),
-            "command": templates.command_section(
-                last_command.get("command_score", 0.5) if last_command else 0.5,
-                last_command,
             ),
             "timing": templates.timing_section(
                 last_timing.get("events", []) if last_timing else [],
@@ -260,14 +229,13 @@ class ReportGenerator:
                 return self.llm.generate_recommendations(factor_values, analysis_summary)
             except Exception:
                 pass
-        # Template fallback
+        # Template fallback. Tipping is the only retained signal in the simplified
+        # post-pivot recommendation logic (see VALIDATION.md for the rationale on
+        # the deferred modules).
         recs = []
         if analysis_summary.get("is_tipping"):
-            recs.append("Address pitch tipping — review pre-release mechanics with video.")
-        fatigue = analysis_summary.get("fatigue_score", 0)
-        if fatigue > 0.6:
-            recs.append("Reduce workload — fatigue score above threshold.")
-        command = analysis_summary.get("command_score", 1.0)
-        if command < 0.5:
-            recs.append("Work on release point consistency — command score below 0.50.")
+            recs.append(
+                "Pitch-tipping signal observed — review pre-delivery body posture "
+                "with the player using the side-by-side delivery comparison view."
+            )
         return recs

@@ -1,5 +1,68 @@
 # Findings & Decisions
 
+## 2026-04-07 Session — Trim Pipeline + SAM 3.1 Integration
+
+### Strategic pivot
+- App repositioned from "MLB player-dev tool with 9 analysis modules" to **"post-game tipping-confirmation tool"** targeting an MLB player-dev role.
+- 4 modules deferred (preserved as `.py` files, unwired from API + reports): `injury_risk`, `fatigue_tracking`, `command_analysis`. Reasoning in `VALIDATION.md`.
+- `tipping_detection` repositioned: now a post-game confirmation tool. Added `compare_within_outing()` as the new primary entry point.
+- `historical_legends` spec deleted.
+- Demo target locked: **Darvish 2017 WS G7 (game_pk 526517)** vs control **Darvish 2017-09-19 vs Phillies (game_pk 492355)**. Both fully downloadable from Savant.
+
+### Pipeline reality findings
+- **Broadcast cut after contact** (the #1 finding): per-pitch Savant clips for hit-into-play pitches show the broadcast cutting from pitcher cam to wide field shot ~5 seconds in. Visible in the in-play CH clip (b69a4fbd): pitcher visible frames 0-148, broadcast cut at frame 155, field action frames 155-300. The matplotlib joint inspection completely missed this — only the 2D-overlay video surfaced it. **Lesson: do a 2D-overlay spot check on at least one clip per pitch type per game.** The numerical .npz alone cannot tell you whether the model was tracking the pitcher or a fielder.
+- **Pitch-outcome → broadcast behavior pattern**: `Ball`, `Called Strike`, `Swinging Strike`, `Foul` outcomes keep the camera on the pitcher for the full 10-second clip. `In play, *` outcomes cut to field action immediately on contact. The trim pipeline must handle both.
+- **2017 broadcasts are 30fps/720p**, modern (2025+) clips are 60fps/1080p. Trim window framing must be FPS-aware: 5s = 150 frames @ 30fps, 5s = 300 frames @ 60fps.
+- **`fetch_savant_clips.py --angle AWAY` returns no MP4 for 2017 postseason play_ids.** Savant only kept HOME-feed clips for older games. Workaround: pass `--angle HOME` explicitly. Permanent fix logged in TODOS — make the default fall back through HOME → CMS_NATIONAL → NETWORK → AWAY automatically.
+
+### SAM 3.1 from mlx-vlm — verified working
+- Installed `mlx-vlm 0.4.4` via `pip install --break-system-packages mlx-vlm` (project uses global Python). Pulled in transformers 5.5, mlx-lm 0.31, huggingface-hub 1.9, opencv 4.13.
+- Model: `mlx-community/sam3.1-bf16` from HuggingFace. First-time download ~48s (1-2 GB). Cached at `~/.cache/huggingface/hub/models--mlx-community--sam3.1-bf16/`.
+- Cold load into MLX: ~5s after first download.
+- Inference speed: ~1000ms per call at default 1008px resolution on M3 Max.
+- **SAM 3.1 supports text prompts** (correcting an earlier misconception). API: `predictor.predict(image, text_prompt="a baseball pitcher")` returns `.boxes`, `.masks`, `.scores`. The text grounding is the headline new feature vs. SAM 2.x.
+- On the Darvish 2017 WS G7 frame, prompt "a person in a baseball uniform" returned 5 detections (scores 0.85, 0.80, 0.78, 0.72, 0.37) cleanly identifying pitcher, batter, catcher, umpire. Crowd in the stands was correctly excluded by the language grounding.
+
+### SAM 3.1 pitcher tiebreaker — calibrated thresholds
+SAM 3.1 returns ALL baseball-uniformed people in the frame. To pick the actual pitcher among catcher/batter/umpire/pitcher, the geometric tiebreaker uses these thresholds (calibrated against the Darvish 2017 frame):
+
+| Constraint | Threshold | What it excludes |
+|------------|-----------|------------------|
+| `aspect_ratio >= 1.5` | tall vs square | crouching, sitting figures |
+| `height_fraction >= 0.35` | bbox >= 35% of frame H | catcher, umpire, batter, far fielders |
+| `height_fraction <= 0.85` | bbox <= 85% of frame H | closeups of glove or face |
+| `center_y >= 0.55` | bbox center in lower 45% | batter (~0.43), umpire (~0.43), upper figures |
+| `0.20 <= center_x <= 0.80` | not at edges | dugout figures, fans |
+| **Tiebreaker** | largest area | when multiple candidates pass |
+
+Empirically: previously loose thresholds (0.40 / 0.15) accepted batter, catcher, umpire, AND fielders. Tightened thresholds correctly select only Darvish across all sampled frames in the in-play CH clip.
+
+### Trim pipeline architecture (Stage 1 of data pipeline)
+- **Trimming runs at DOWNLOAD time, not inference time** — moved out of `batch_inference.py` and into the post-download step. No `--auto-trim` flag needed; trimming is unconditional.
+- Algorithm uses two complementary signals:
+  - **Phase 1: SAM 3.1 (semantic)** — early-exit forward scan to find the first frame where a pitcher is detected. Stride = 0.2s (FPS-aware). Min consecutive detections = 1 (strict geometric filter makes this safe). Stops as soon as the set frame is confirmed. Cost: ~3-7 SAM calls per clip = 3-7s.
+  - **Phase 2: cv2 histogram diff (structural)** — scans `[set_frame, set_frame + 5s]` for the first scene cut. Catches the broadcast cut to field action. Cost: ~0.2s.
+  - **Phase 3: combine** — `end_frame = min(set_frame + 5s, scene_cut, total_frames)`, `start_frame = max(0, set_frame - 0.5s)`.
+- **Calibrated histogram threshold = 0.85** (NOT the literature default of 0.55). Pitcher-cam frames have inter-frame correlation 0.99-1.00. The actual broadcast cut in the Darvish clip dropped correlation to 0.649. 0.85 sits comfortably between. Lower threshold (0.55) FAILED to catch the cut.
+- Total cost per clip: ~3-5s vs the previous uniform-sampling approach at 60s. **~12x speedup.**
+
+### Mesh quality on 2017 broadcast footage — verified
+- One Darvish CH pitch (b69a4fbd, 300 frames @ 30fps) ran end-to-end through SAM 3D Body MLX inference in 150.7s.
+- Body bbox diagonal at frame 0 = **1.938m** (matches Darvish's 1.96m height).
+- Body-center travel across all frames = **0.843m** (consistent with a pitcher's stride; far too much for a static catcher/umpire; far too small for model jitter onto random people).
+- Visual frame extraction at frames 0/150/290 confirms a recognizable pitching delivery: standing → leg lift → follow-through.
+- Mesh shape `(300, 18439, 3)`, joints shape `(300, 70, 3)`, no NaN/inf.
+
+### Open issues from this session (must address in next session)
+1. **Refactored delivery_window not yet re-tested with new thresholds** (`min_consecutive=1` and `_HIST_CORR_CUT_THRESHOLD=0.85`). Edited but not validated.
+2. **fetch_savant_clips.py integration not yet done** (task #23). Trimmer is built but not wired into the download flow.
+3. **mlx-vlm not yet pinned in requirements.txt** (task #19).
+4. **Unit tests for delivery_window not written** (task #15).
+5. **No end-to-end inference run on a trimmed clip yet** (task #21). Trim quality is visually verified but not tested through SAM 3D Body.
+6. **GLB export tests broken (pre-existing)** — test_glb_export.py fails 2/2 tests due to uncommitted glb.py changes from before this session. Not blocking, but should be cleaned up.
+
+---
+
 ## Goal
 Build a web-based pitcher mechanics analyzer using SAM 3D Body to help MLB teams identify pitcher issues, packaged as a portfolio project for player development roles.
 

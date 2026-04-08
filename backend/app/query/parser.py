@@ -62,7 +62,7 @@ Output ONLY valid JSON matching this schema:
     "inning_range_a": [start, end] or null,
     "inning_range_b": [start, end] or null,
     "game_date": "YYYY-MM-DD" or null,
-    "concern": "command" | "velocity" | "getting hit" | "fatigue" | "tipping" | null
+    "concern": "tipping" | "release_consistency" | "velocity" | "getting hit" | null
 }
 
 Rules:

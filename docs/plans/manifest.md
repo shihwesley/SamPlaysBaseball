@@ -69,11 +69,6 @@ graph TD
     BR --> ASR
     VIZ --> DEMO[demo-mode]
     DASH --> DEMO
-    VP --> HL[historical-legends]
-    SI --> HL
-    FE --> HL
-    BC --> HL
-    HL --> DEMO
 ```
 
 ## Phase / Sprint / Spec Map
@@ -89,20 +84,30 @@ graph TD
 | 2 | 1 | feature-extraction | sam3d-inference | **implemented** |
 | 2 | 1 | mesh-export | sam3d-inference, feature-extraction | **implemented** |
 | 2 | 2 | baseline-comparison | feature-extraction | **implemented** |
-| 2 | 2 | tipping-detection | feature-extraction | **implemented** |
-| 2 | 2 | fatigue-tracking | feature-extraction | **implemented** |
-| 2 | 2 | command-analysis | feature-extraction | **implemented** |
+| 2 | 2 | tipping-detection | feature-extraction | **implemented** *(repositioned 2026-04-07: post-game confirmation)* |
+| 2 | 2 | fatigue-tracking | feature-extraction | **deferred** — see VALIDATION.md → Future Biomechanics Work |
+| 2 | 2 | command-analysis | feature-extraction | **deferred** — see VALIDATION.md → Future Biomechanics Work |
 | 2 | 2 | arm-slot-drift | feature-extraction | **implemented** |
 | 2 | 2 | timing-analysis | feature-extraction | **implemented** |
-| 2 | 3 | injury-risk | fatigue, arm-slot, timing | **implemented** |
+| 2 | 3 | injury-risk | fatigue, arm-slot, timing | **deferred** — see VALIDATION.md → Future Biomechanics Work |
 | 3 | 1 | ai-scouting-reports | all analysis + injury-risk + statcast | **implemented** |
 | 3 | 1 | api-layer | data-model, all analysis, scouting | **implemented** |
 | 3 | 2 | 3d-visualization | api-layer, mesh-export | **implemented** |
 | 3 | 2 | dashboard-ui | api-layer | **implemented** |
 | 3 | 3 | mechanics-diagnostic | ai-scouting-reports, 3d-viz, dashboard-ui | **implemented** |
 | 3 | 2 | blender-render | mesh-export, 3d-visualization | draft |
-| 4 | 1 | historical-legends | pipeline + feature-extraction + baseline | draft |
 | 4 | 1 | demo-mode | 3d-visualization, dashboard-ui | draft |
+
+### Data Pipeline — Stage 1 (clip trimming, added 2026-04-07 afternoon)
+
+| Phase | Sprint | Spec | Status |
+|-------|--------|------|--------|
+| DP-1 | 1 | sam31-pitcher-detector | **implemented** (`sam3d_mlx/sam31_detector.py`) |
+| DP-1 | 1 | delivery-window-detector | **implemented** (`backend/app/pipeline/delivery_window.py`) |
+| DP-1 | 2 | trimmer-fetch-integration | **pending** (wire into `scripts/fetch_savant_clips.py`) |
+| DP-1 | 2 | trimmer-unit-tests | **pending** |
+
+The trim pipeline runs at clip-download time. SAM 3.1 (mlx-vlm port) finds the first set frame; cv2 histogram diff catches broadcast cuts; the window is bounded by the biomechanical 5s upper limit. ~3-5s per clip on M3 Max. See `VALIDATION.md` and the 2026-04-07 session note in `progress.md` for the calibration data.
 
 ### MLX Port (separate track, lower priority)
 
@@ -128,12 +133,12 @@ Note: MLX port is fully functional after 3 bug fixes (2026-04-05). Runs at ~490m
 | pitch-matcher | docs/plans/2026-04-04-pitch-matcher-design.md | designed | Tiered DTW design, blocked on pipeline output |
 | feature-extraction | specs/feature-extraction-spec.md | **implemented** | 29 tests, MLX validated 2026-04-05 |
 | baseline-comparison | specs/baseline-comparison-spec.md | **implemented** | Z-score deviation from baseline |
-| tipping-detection | specs/tipping-detection-spec.md | **implemented** | Cross-pitch-type mechanical tells |
-| fatigue-tracking | specs/fatigue-tracking-spec.md | **implemented** | Rolling baseline drift + changepoint detection |
-| command-analysis | specs/command-analysis-spec.md | **implemented** | Release point clustering + deviations |
-| arm-slot-drift | specs/arm-slot-drift-spec.md | **implemented** | Arm slot angle tracking |
+| tipping-detection | specs/tipping-detection-spec.md | **implemented** | Repositioned 2026-04-07: `compare_within_outing()` is the post-game confirmation entry point. Classifier path preserved as legacy. |
+| fatigue-tracking | specs/fatigue-tracking-spec.md | **deferred** | Code preserved in `backend/app/analysis/fatigue.py`. Unwired from API + reports. Needs dense in-game data + ground-truth pitch-velocity decline as proxy. See VALIDATION.md. |
+| command-analysis | specs/command-analysis-spec.md | **deferred** | Code preserved in `backend/app/analysis/command.py`. Unwired from API + reports. Needs Hawk-Eye trajectory data per pitch. See VALIDATION.md. |
+| arm-slot-drift | specs/arm-slot-drift-spec.md | **implemented** | Within-outing release-window consistency tracking |
 | timing-analysis | specs/timing-analysis-spec.md | **implemented** | Phase timing + energy decomposition |
-| injury-risk | specs/injury-risk-spec.md | **implemented** | Composite risk score, traffic light, trend tracking |
+| injury-risk | specs/injury-risk-spec.md | **deferred** | Code preserved in `backend/app/analysis/injury_risk.py`. Removed from API + reports. Needs marker-mocap validation + UCL cohort data before any medical-adjacent claim. See VALIDATION.md. |
 | statcast-integration | specs/statcast-integration-spec.md | **implemented** | Revised 2026-04-04 — PitchDB enrichment + PlayerSearch |
 | mesh-export | specs/mesh-export-spec.md | **implemented** | GLB exporter + comparison + ground plane + mound |
 | api-layer | specs/api-layer-spec.md | **implemented** | FastAPI routes: analysis, compare, pitchers, reports, upload, websocket |
@@ -141,7 +146,6 @@ Note: MLX port is fully functional after 3 bug fixes (2026-04-05). Runs at ~490m
 | dashboard-ui | specs/dashboard-ui-spec.md | **implemented** | Next.js with pitcher, compare, upload routes |
 | blender-render | specs/blender-render-spec.md | draft | |
 | ai-scouting-reports | specs/ai-scouting-reports-spec.md | **implemented** | LLM reports + PDF + templates + diagnostic engine |
-| historical-legends | specs/historical-legends-spec.md | draft | |
 | mechanics-diagnostic | docs/plans/2026-04-05-mechanics-diagnostic-design.md | **implemented** | Query parser + orchestrator + API + dashboard + Gemma4 local LLM |
 | demo-mode | specs/demo-mode-spec.md | draft | |
 | mlx-weight-converter | specs/mlx-weight-converter-spec.md | **implemented** | safetensors conversion working |
@@ -150,6 +154,8 @@ Note: MLX port is fully functional after 3 bug fixes (2026-04-05). Runs at ~490m
 | mlx-decoder | specs/mlx-decoder-spec.md | **implemented** | Transformer decoder ported |
 | mlx-inference | specs/mlx-inference-spec.md | **implemented** | ~490ms/frame on M3 Max, default backend |
 | mlx-validation | specs/mlx-validation-spec.md | **implemented** | Vertices match PyTorch within 0.0001mm |
+| sam31-pitcher-detector | — | **implemented** | `sam3d_mlx/sam31_detector.py` — SAM 3.1 wrapper with calibrated geometric tiebreaker for picking the pitcher among multiple uniformed people |
+| delivery-window-detector | — | **implemented** | `backend/app/pipeline/delivery_window.py` — finds set frame via SAM 3.1, finds broadcast cut via cv2 histogram, computes FPS-aware trim window. Calibrated against Darvish 2017 WS G7. |
 
 ## What Exists (implemented without specs or ahead of specs)
 

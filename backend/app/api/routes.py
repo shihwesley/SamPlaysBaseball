@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from fastapi import APIRouter
 
-from backend.app.api import analysis, compare, demo, pitchers, pitches, query, reports, upload, websocket
+from backend.app.api import analysis, blender, compare, demo, pitchers, pitches, query, reports, upload, websocket
 
 api_router = APIRouter()
 
@@ -17,3 +17,4 @@ api_router.include_router(demo.router)
 api_router.include_router(websocket.router)
 api_router.include_router(reports.router)
 api_router.include_router(query.router)
+api_router.include_router(blender.router)

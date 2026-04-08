@@ -1,4 +1,11 @@
-"""Analysis result endpoints — reads stored results from StorageLayer."""
+"""Analysis result endpoints — reads stored results from StorageLayer.
+
+Note: As of the 2026-04-07 strategic pivot, the `/fatigue/`, `/command/`, and
+`/injury-risk/` endpoints have been deprecated and now return HTTP 410 Gone.
+The underlying analysis modules in `backend/app/analysis/` are preserved but
+are no longer surfaced through the API or the report generator. See VALIDATION.md
+"Future Biomechanics Work" for the rationale and revival path.
+"""
 
 from __future__ import annotations
 
@@ -9,6 +16,11 @@ from backend.app.api.models import BaselineSummary
 from backend.app.models.storage import StorageLayer
 
 router = APIRouter(prefix="/api/analysis", tags=["analysis"])
+
+_DEFERRED_DETAIL = (
+    "This analysis module has been moved to Future Biomechanics Work. "
+    "See VALIDATION.md for the validation gap and revival path."
+)
 
 
 def _load_by_module(pitcher_id: str, module: str, storage: StorageLayer) -> list[dict]:
@@ -25,29 +37,15 @@ def get_tipping(
 
 
 @router.get("/fatigue/{pitcher_id}/{outing_id}")
-def get_fatigue(
-    pitcher_id: str,
-    outing_id: str,
-    storage: StorageLayer = Depends(get_storage),
-) -> list[dict]:
-    """Fatigue results for a specific outing date (YYYY-MM-DD)."""
-    with storage._conn() as conn:
-        rows = conn.execute(
-            "SELECT pitch_id FROM pitches WHERE pitcher_id = ? AND game_date LIKE ?",
-            (pitcher_id, f"{outing_id}%"),
-        ).fetchall()
-    pitch_ids = [r["pitch_id"] for r in rows]
-    results: list[dict] = []
-    for pid in pitch_ids:
-        results.extend(storage.load_analysis(pid, module="fatigue-tracking"))
-    return results
+def get_fatigue(pitcher_id: str, outing_id: str) -> dict:
+    """Deferred — see VALIDATION.md → Future Biomechanics Work."""
+    raise HTTPException(status_code=410, detail=_DEFERRED_DETAIL)
 
 
 @router.get("/command/{pitcher_id}")
-def get_command(
-    pitcher_id: str, storage: StorageLayer = Depends(get_storage)
-) -> list[dict]:
-    return _load_by_module(pitcher_id, "command-analysis", storage)
+def get_command(pitcher_id: str) -> dict:
+    """Deferred — see VALIDATION.md → Future Biomechanics Work."""
+    raise HTTPException(status_code=410, detail=_DEFERRED_DETAIL)
 
 
 @router.get("/arm-slot/{pitcher_id}")
@@ -88,12 +86,13 @@ def get_baseline(
 
 
 @router.get("/injury-risk/{pitcher_id}")
-def get_injury_risk(
-    pitcher_id: str, storage: StorageLayer = Depends(get_storage)
-) -> dict:
-    """Most recent injury risk data for a pitcher."""
-    results = _load_by_module(pitcher_id, "injury-risk", storage)
-    if not results:
-        return {"pitcher_id": pitcher_id, "risk_data": None, "message": "No injury risk data available"}
-    # Return most recent (last in list)
-    return {"pitcher_id": pitcher_id, "risk_data": results[-1]}
+def get_injury_risk(pitcher_id: str) -> dict:
+    """Deferred — see VALIDATION.md → Future Biomechanics Work.
+
+    Combining unvalidated mechanical signals into a medical-adjacent risk score
+    is exactly the failure mode that makes team doctors reject biomechanics tools.
+    The composite score has been removed from the user-facing flow until each input
+    signal is validated against marker-mocap ground truth (Driveline OpenBiomechanics)
+    and the composite is validated against published UCL injury cohort data.
+    """
+    raise HTTPException(status_code=410, detail=_DEFERRED_DETAIL)
