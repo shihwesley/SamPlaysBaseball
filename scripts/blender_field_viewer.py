@@ -1215,22 +1215,40 @@ def _import_npz(filepath):
     vertex_lock_offsets = np.zeros((n_frames, 3), dtype=np.float32)
     vertex_lock_offsets[:, 2] = vertex_lock_offsets_z
 
-    # Mode A (ankle anchor — X/Y per frame, Z static):
+    # Mode A (ankle anchor — full per-frame XYZ):
     #
-    # The hybrid: compute a static Z offset from frame 0 so the body sits
-    # on the rubber vertically (no bobbing), then compute per-frame X/Y
-    # offsets that compensate for the pivot foot's lateral drift in
-    # canonical space. The pivot foot stays glued to the rubber laterally
-    # while the body never bobs up/down.
+    # Per-frame XYZ anchor of the pivot foot to the rubber. The pivot
+    # ankle is held at exactly (0, 0, RUBBER_Z + ankle_to_sole) for every
+    # frame from set position through the moment we detect the pivot
+    # foot lifting off, then the offset freezes so the body can rotate
+    # naturally during follow-through.
     #
-    # Pivot detection: the pivot foot has *less* total motion across the
-    # clip than the stride foot. We auto-detect rather than hardcoding,
-    # so this works for both right- and left-handed pitchers.
+    # This replaces an earlier "static Z from frame 0 lowest vertex" approach
+    # that produced 44 cm of vertical drift (the body floated above the mound
+    # mid-delivery). The drift came from two compounding bugs:
+    #   (a) "lowest vertex at frame 0" was the stride foot, not the pivot
+    #   (b) the lowest-vertex Z swaps body parts frame-to-frame as the
+    #       stride foot lifts, so a single static offset can't ground both
+    #       the early "feet on rubber" pose and the leg-lift pose.
     #
-    # We deliberately do NOT compensate Z drift — the model's per-frame
-    # canonical Z is too noisy (we measured 1m of drift, which would
-    # bob the body by 1m vertically). The static Z from frame 0 keeps
-    # the body's vertical position stable.
+    # The fix uses joint regression output (smooth per-frame) instead of
+    # raw vertex extrema (jumps between body parts). The earlier comment
+    # warning about "1 m of canonical Z noise" was about per-frame
+    # lowest-vertex tracking. The pivot ANKLE JOINT is much smoother
+    # because it's regressed by the MHR head, not picked from 18k verts.
+    #
+    # Three sub-fixes:
+    #   1. Compute the ankle-to-sole offset per mesh from MHR topology
+    #      instead of hardcoding 8 cm. Different shape_params give
+    #      slightly different foot heights.
+    #   2. Adaptive lift-off detection: find the pitcher's own stable
+    #      "set" window in the first third of the clip, compute baseline
+    #      from that, and detect lift-off where the pivot ankle exceeds
+    #      baseline by 5 cm or 4σ for 3 consecutive frames. No constants
+    #      that hard-bake one pitcher's style.
+    #   3. Handedness pulled from the NPZ if present (Statcast p_throws),
+    #      then DEFAULT_HANDEDNESS env var, then motion heuristic. Same
+    #      priority chain as before.
     if 'joints_mhr70' in data and data['joints_mhr70'].shape[1] > 14:
         ankles_pipeline = data['joints_mhr70'][:, [13, 14], :]  # (T, 2, 3)
         ankles_blender = np.empty_like(ankles_pipeline, dtype=np.float32)
@@ -1238,23 +1256,16 @@ def _import_npz(filepath):
         ankles_blender[:, :, 1] = -ankles_pipeline[:, :, 2]
         ankles_blender[:, :, 2] = -ankles_pipeline[:, :, 1]
 
-        # Compute motion totals for diagnostic purposes (and as a fallback
-        # when handedness is missing).
         motion = []
         for k in range(2):
             d = np.linalg.norm(np.diff(ankles_blender[:, k, :], axis=0), axis=1)
             motion.append(float(d.sum()))
 
-        # Resolve pivot foot in priority order:
-        #   1. NPZ 'handedness' field (most authoritative)
-        #   2. DEFAULT_HANDEDNESS module constant (env var or top-of-file)
-        #   3. Motion-based heuristic (last resort)
-        # The motion heuristic is unreliable on long clips with walk-off:
-        # both feet end up with similar total motion (e.g. L=14.51m vs
-        # R=14.90m) and the choice flips arbitrarily.
-        #
+        # Handedness resolution: NPZ field → env var → motion heuristic.
+        # Statcast 'p_throws' = 'R' or 'L'. _handedness_to_pair_idx accepts
+        # both single-letter and full-word forms.
         # RHP → pivot = right ankle (mhr70[14], pair index 1)
-        # LHP → pivot = left ankle  (mhr70[13], pair index 0)
+        # LHP → pivot = left  ankle (mhr70[13], pair index 0)
         def _handedness_to_pair_idx(h: str):
             h = h.lower().strip()
             if h.startswith('r'):
@@ -1269,12 +1280,14 @@ def _import_npz(filepath):
             pivot_idx_in_pair = _handedness_to_pair_idx(str(data['handedness']))
             if pivot_idx_in_pair is not None:
                 pivot_source = f"NPZ handedness={data['handedness']}"
-
+        if pivot_idx_in_pair is None and 'p_throws' in data:
+            pivot_idx_in_pair = _handedness_to_pair_idx(str(data['p_throws']))
+            if pivot_idx_in_pair is not None:
+                pivot_source = f"NPZ p_throws={data['p_throws']}"
         if pivot_idx_in_pair is None:
             pivot_idx_in_pair = _handedness_to_pair_idx(DEFAULT_HANDEDNESS)
             if pivot_idx_in_pair is not None:
                 pivot_source = f"DEFAULT_HANDEDNESS={DEFAULT_HANDEDNESS}"
-
         if pivot_idx_in_pair is None:
             pivot_idx_in_pair = int(np.argmin(motion))
             pivot_source = "motion heuristic (fallback)"
@@ -1285,16 +1298,90 @@ def _import_npz(filepath):
 
         pivot_traj = ankles_blender[:, pivot_idx_in_pair, :]  # (T, 3) blender coords
 
-        # Static Z: snap frame 0's lowest vertex to the rubber surface,
-        # apply that same Z offset to every frame.
-        static_z = RUBBER_Z - float(blender_verts[0, :, 2].min())
+        # ----- Sub-fix 1: ankle-to-sole offset from this mesh's geometry -----
+        # At frame 0, find the lowest vertex within a 10 cm XY radius of the
+        # pivot ankle that is also below it. That vertex is the bottom of the
+        # foot sole. The ankle-to-sole distance is the Z gap.
+        ankle_xy_f0 = pivot_traj[0, :2]
+        dxy = np.linalg.norm(blender_verts[0, :, :2] - ankle_xy_f0, axis=1)
+        below_ankle = blender_verts[0, :, 2] < pivot_traj[0, 2]
+        foot_region = (dxy < 0.10) & below_ankle
+        if foot_region.any():
+            sole_z_f0 = float(blender_verts[0, foot_region, 2].min())
+            ankle_to_sole = float(pivot_traj[0, 2] - sole_z_f0)
+            n_foot_verts = int(foot_region.sum())
+            print(f"  Ankle-to-sole: {ankle_to_sole*100:.2f}cm "
+                  f"(measured from {n_foot_verts} foot-region vertices)")
+        else:
+            ankle_to_sole = 0.08  # safe fallback
+            print(f"  Ankle-to-sole: 8.00cm (fallback — no foot vertices found)")
 
-        # Per-frame X/Y: compensate so the pivot foot stays at the
-        # rubber's lateral position (0, 0). offset_x = -pivot_x.
+        target_ankle_z = RUBBER_Z + ankle_to_sole
+
+        # ----- Sub-fix 2: adaptive lift-off detection -----
+        # Find the pitcher's stable "set" window (first 5+ consecutive frames
+        # in the first third of the clip where pivot Z varies < 1 cm), use it
+        # as the baseline, then detect lift-off as 3 consecutive frames where
+        # the pivot Z exceeds baseline + max(5cm, 4σ).
+        pivot_z = pivot_traj[:, 2]
+        n_early = max(5, n_frames // 3)
+        early = pivot_z[:n_early]
+        win = 5
+        stable_thresh = 0.01  # 1 cm — joint regression noise floor
+
+        stable_start = -1
+        for i in range(len(early) - win + 1):
+            if early[i:i + win].max() - early[i:i + win].min() < stable_thresh:
+                stable_start = i
+                break
+        if stable_start < 0:
+            baseline = float(early[0])
+            stable_end = min(win, len(early))
+            std = 0.0
+        else:
+            stable_end = stable_start + win
+            while stable_end < len(early):
+                w = early[stable_start:stable_end + 1]
+                if w.max() - w.min() < stable_thresh:
+                    stable_end += 1
+                else:
+                    break
+            stable_window = early[stable_start:stable_end]
+            baseline = float(stable_window.mean())
+            std = float(stable_window.std())
+
+        lift_threshold = baseline + max(0.05, 4.0 * std)
+        lifted_mask = pivot_z > lift_threshold
+        lift_frame = n_frames
+        for i in range(stable_end, n_frames - 2):
+            if lifted_mask[i] and lifted_mask[i + 1] and lifted_mask[i + 2]:
+                lift_frame = i
+                break
+        print(f"  Set-position window: frames [{stable_start if stable_start>=0 else 0}, {stable_end})  "
+              f"baseline={baseline*100:+.2f}cm")
+        print(f"  Lift-off detected: frame {lift_frame}/{n_frames} "
+              f"({lift_frame/n_frames*100:.0f}% through clip)  "
+              f"threshold={lift_threshold*100:+.2f}cm")
+
+        # ----- Sub-fix 3: build per-frame XYZ offsets -----
+        # Pre lift-off: glue pivot ankle to (0, 0, target_ankle_z).
+        # Post lift-off: freeze the offset to the last pre-lift value so
+        # the body's natural canonical motion drives the follow-through.
         ankle_lock_offsets = np.zeros((n_frames, 3), dtype=np.float32)
-        ankle_lock_offsets[:, 0] = -pivot_traj[:, 0]  # X compensation
-        ankle_lock_offsets[:, 1] = -pivot_traj[:, 1]  # Y compensation
-        ankle_lock_offsets[:, 2] = static_z           # static Z, no bobbing
+        ankle_lock_offsets[:lift_frame, 0] = -pivot_traj[:lift_frame, 0]
+        ankle_lock_offsets[:lift_frame, 1] = -pivot_traj[:lift_frame, 1]
+        ankle_lock_offsets[:lift_frame, 2] = target_ankle_z - pivot_traj[:lift_frame, 2]
+        if lift_frame < n_frames:
+            freeze = ankle_lock_offsets[lift_frame - 1] if lift_frame > 0 else np.zeros(3, dtype=np.float32)
+            ankle_lock_offsets[lift_frame:] = freeze
+
+        # Verify: pivot ankle should be exactly target_ankle_z pre-lift
+        pivot_after = pivot_z + ankle_lock_offsets[:, 2]
+        pre = pivot_after[:lift_frame]
+        if len(pre) > 0:
+            drift_mm = (pre.max() - pre.min()) * 1000
+            print(f"  Pre-lift pivot Z drift: {drift_mm:.1f}mm "
+                  f"(target {target_ankle_z*100:+.2f}cm)")
     else:
         print("  WARN: no joints_mhr70 in npz, ankle lock falls back to vertex Z-only")
         ankle_lock_offsets = vertex_lock_offsets.copy()
