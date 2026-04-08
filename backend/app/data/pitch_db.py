@@ -108,6 +108,8 @@ class MeshData:
     shape_params: np.ndarray   # (45,) body shape (constant across frames)
     cam_t: np.ndarray          # (T, 3) camera translation per frame
     focal_length: float        # for re-rendering
+    faces: np.ndarray | None = None  # (F, 3) int32 triangle indices
+    source_fps: float | None = None  # original video FPS (for correct playback timing)
 
 
 class PitchDB:
@@ -412,6 +414,8 @@ class PitchDB:
             return None
 
         data = np.load(path)
+        faces = data["faces"] if "faces" in data else None
+        source_fps = float(data["source_fps"]) if "source_fps" in data else None
         return MeshData(
             vertices=data["vertices"],
             joints_mhr70=data["joints_mhr70"],
@@ -419,6 +423,8 @@ class PitchDB:
             shape_params=data["shape_params"],
             cam_t=data["cam_t"],
             focal_length=float(data["focal_length"]),
+            faces=faces,
+            source_fps=source_fps,
         )
 
     def _save_mesh(self, play_id: str, game_pk: int, mesh: MeshData) -> Path:
@@ -430,8 +436,7 @@ class PitchDB:
         short_id = play_id[:8]
         path = game_dir / f"{short_id}.npz"
 
-        np.savez_compressed(
-            path,
+        arrays = dict(
             vertices=mesh.vertices,
             joints_mhr70=mesh.joints_mhr70,
             pose_params=mesh.pose_params,
@@ -439,4 +444,9 @@ class PitchDB:
             cam_t=mesh.cam_t,
             focal_length=np.array(mesh.focal_length),
         )
+        if mesh.faces is not None:
+            arrays["faces"] = mesh.faces
+        if mesh.source_fps is not None:
+            arrays["source_fps"] = np.array(float(mesh.source_fps))
+        np.savez_compressed(path, **arrays)
         return path

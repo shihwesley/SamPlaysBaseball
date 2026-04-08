@@ -8,7 +8,8 @@ try:
     import pygltflib
     from pygltflib import (
         GLTF2, Scene, Node, Mesh, Primitive, Accessor, BufferView, Buffer,
-        Asset, Material, MeshPrimitive, Animation,
+        Asset, Material, Animation, AnimationSampler,
+        AnimationChannel, AnimationChannelTarget,
     )
     HAS_PYGLTFLIB = True
 except ImportError:
@@ -43,6 +44,7 @@ class GLBExporter:
         mesh_frames: list[np.ndarray],
         metadata: dict,
         output_path: str,
+        faces: np.ndarray | None = None,
     ) -> str:
         """
         Export a sequence of mesh frames as an animated GLB.
@@ -50,6 +52,7 @@ class GLBExporter:
         mesh_frames: list of (N, 3) float32 arrays, one per frame
         metadata: dict with pitch_type, pitcher_id, frame_timestamps, phase_markers
         output_path: destination .glb path
+        faces: (F, 3) int32 triangle indices. Required for proper mesh rendering.
 
         Returns output_path.
         """
@@ -57,8 +60,19 @@ class GLBExporter:
 
         if not mesh_frames:
             raise ValueError("mesh_frames must not be empty")
+        if faces is None:
+            raise ValueError("faces required for GLB export")
 
-        frames = [np.asarray(f, dtype=np.float32) for f in mesh_frames]
+        # Flip Y and Z to convert from pipeline camera space to GLTF Y-up.
+        # Pipeline outputs: +X right, -Y down, -Z into screen (from _flip_yz)
+        # GLTF expects: +X right, +Y up, +Z toward viewer
+        def _to_gltf_coords(v: np.ndarray) -> np.ndarray:
+            out = v.copy().astype(np.float32)
+            out[:, 1] *= -1  # flip Y: down -> up
+            out[:, 2] *= -1  # flip Z: into screen -> toward viewer
+            return out
+
+        frames = [_to_gltf_coords(np.asarray(f)) for f in mesh_frames]
         n_verts = frames[0].shape[0]
         n_frames = len(frames)
 
@@ -74,8 +88,15 @@ class GLBExporter:
         # Flatten all frame data into a single byte buffer
         blob_parts = []
 
+        # Face indices (uint32)
+        faces_u32 = np.asarray(faces, dtype=np.uint32).flatten()
+        blob_parts.append(faces_u32.tobytes())
+        indices_offset = 0
+        indices_length = len(faces_u32) * 4
+
         # Base positions (frame 0)
         base_positions = frames[0].astype(np.float32)
+        positions_offset = indices_length
         blob_parts.append(base_positions.tobytes())
 
         # Morph target deltas (frames 1..N-1)
@@ -107,21 +128,46 @@ class GLBExporter:
 
         stride = n_verts * 3 * 4  # float32 * 3 components * 4 bytes
 
+        # Indices accessor (uint32 = component type 5125, type SCALAR)
+        bv_indices = add_buffer_view(indices_offset, indices_length)
+        acc_indices = Accessor(
+            bufferView=bv_indices,
+            componentType=5125,  # UNSIGNED_INT
+            count=len(faces_u32),
+            type="SCALAR",
+        )
+        gltf.accessors.append(acc_indices)
+        acc_indices_idx = len(gltf.accessors) - 1
+
         # Base positions accessor
-        bv_base = add_buffer_view(0, stride)
+        bv_base = add_buffer_view(positions_offset, stride)
         acc_base = add_accessor(bv_base, n_verts)
 
         # Morph target accessors
         morph_targets = []
         for i, _delta in enumerate(morph_deltas):
-            offset = stride * (i + 1)
+            offset = positions_offset + stride * (i + 1)
             bv_mt = add_buffer_view(offset, stride)
             acc_mt = add_accessor(bv_mt, n_verts)
             morph_targets.append({"POSITION": acc_mt})
 
+        # Add a default material (light blue-gray, like test_clip_mesh.py)
+        material = Material(
+            pbrMetallicRoughness=pygltflib.PbrMetallicRoughness(
+                baseColorFactor=[0.65, 0.74, 0.86, 1.0],
+                metallicFactor=0.0,
+                roughnessFactor=0.7,
+            ),
+            alphaMode="OPAQUE",
+            doubleSided=True,
+        )
+        gltf.materials.append(material)
+
         prim = Primitive(
             attributes=pygltflib.Attributes(POSITION=acc_base),
+            indices=acc_indices_idx,
             targets=morph_targets,
+            material=0,
         )
         mesh = Mesh(primitives=[prim])
         if n_frames > 1:
@@ -135,6 +181,73 @@ class GLBExporter:
         scene = Scene(nodes=[0])
         gltf.scenes.append(scene)
         gltf.scene = 0
+
+        # Add animation: keyframe morph target weights over time
+        if n_frames > 1:
+            fps = metadata.get("fps", 30)
+            n_morph = len(morph_deltas)
+
+            # Time values: one keyframe per frame (starting at frame 1)
+            times = np.array([i / fps for i in range(n_morph)], dtype=np.float32)
+            times_bytes = times.tobytes()
+
+            # Weight values: at each keyframe, activate one morph target
+            # Each keyframe needs n_morph weight values
+            weights = np.zeros((n_morph, n_morph), dtype=np.float32)
+            for i in range(n_morph):
+                weights[i, i] = 1.0
+            weights_bytes = weights.tobytes()
+
+            # Append to blob
+            anim_blob = times_bytes + weights_bytes
+            time_offset = len(full_blob)
+            weights_offset = time_offset + len(times_bytes)
+            full_blob = full_blob + anim_blob
+
+            # Update buffer size
+            buf.byteLength = len(full_blob)
+
+            # Time accessor
+            bv_time = add_buffer_view(time_offset, len(times_bytes))
+            acc_time = Accessor(
+                bufferView=bv_time,
+                componentType=5126,  # FLOAT
+                count=n_morph,
+                type="SCALAR",
+                max=[float(times[-1])],
+                min=[float(times[0])],
+            )
+            gltf.accessors.append(acc_time)
+            acc_time_idx = len(gltf.accessors) - 1
+
+            # Weights accessor
+            bv_weights = add_buffer_view(weights_offset, len(weights_bytes))
+            acc_weights = Accessor(
+                bufferView=bv_weights,
+                componentType=5126,
+                count=n_morph * n_morph,
+                type="SCALAR",
+            )
+            gltf.accessors.append(acc_weights)
+            acc_weights_idx = len(gltf.accessors) - 1
+
+            # Animation
+            anim = Animation(
+                samplers=[
+                    AnimationSampler(
+                        input=acc_time_idx,
+                        output=acc_weights_idx,
+                        interpolation="LINEAR",
+                    )
+                ],
+                channels=[
+                    AnimationChannel(
+                        sampler=0,
+                        target=AnimationChannelTarget(node=0, path="weights"),
+                    )
+                ],
+            )
+            gltf.animations.append(anim)
 
         gltf.set_binary_blob(full_blob)
 
