@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS pitches (
     at_bat_number INTEGER,
     pitch_number_in_ab INTEGER,
     pitch_type TEXT,
+    p_throws TEXT,
     release_speed REAL,
     release_spin_rate REAL,
     spin_axis REAL,
@@ -77,6 +78,7 @@ class PitchRecord:
     at_bat_number: int | None = None
     pitch_number_in_ab: int | None = None
     pitch_type: str | None = None
+    p_throws: str | None = None  # 'R' or 'L' from Statcast
     release_speed: float | None = None
     release_spin_rate: float | None = None
     spin_axis: float | None = None
@@ -110,6 +112,7 @@ class MeshData:
     focal_length: float        # for re-rendering
     faces: np.ndarray | None = None  # (F, 3) int32 triangle indices
     source_fps: float | None = None  # original video FPS (for correct playback timing)
+    p_throws: str | None = None  # 'R' or 'L' — pitcher handedness for the foot-lock anchor
 
 
 class PitchDB:
@@ -128,6 +131,19 @@ class PitchDB:
         self._conn = sqlite3.connect(str(self.db_path))
         self._conn.row_factory = sqlite3.Row
         self._conn.executescript(SCHEMA)
+        self._migrate()
+
+    def _migrate(self) -> None:
+        """Apply lightweight ALTER migrations for columns added after schema v1.
+
+        SQLite's CREATE TABLE IF NOT EXISTS is a no-op when the table is
+        already there, so columns added later need explicit ALTERs. Each
+        migration is idempotent — checked against the live column list.
+        """
+        existing = {r[1] for r in self._conn.execute("PRAGMA table_info(pitches)")}
+        if "p_throws" not in existing:
+            self._conn.execute("ALTER TABLE pitches ADD COLUMN p_throws TEXT")
+            self._conn.commit()
 
     def close(self) -> None:
         self._conn.close()
@@ -156,7 +172,7 @@ class PitchDB:
         cols = [
             "play_id", "game_pk", "game_date", "pitcher_id", "pitcher_name",
             "batter_name", "inning", "at_bat_number", "pitch_number_in_ab",
-            "pitch_type", "release_speed", "release_spin_rate", "spin_axis",
+            "pitch_type", "p_throws", "release_speed", "release_spin_rate", "spin_axis",
             "pfx_x", "pfx_z", "plate_x", "plate_z",
             "effective_speed", "release_extension",
             "description", "events", "woba_value", "estimated_woba",
@@ -192,6 +208,7 @@ class PitchDB:
                 at_bat_number=p.get("at_bat_number"),
                 pitch_number_in_ab=p.get("pitch_number_in_ab"),
                 pitch_type=p.get("pitch_type"),
+                p_throws=p.get("p_throws"),
                 release_speed=p.get("release_speed"),
                 description=p.get("description"),
                 events=p.get("events"),
@@ -416,6 +433,7 @@ class PitchDB:
         data = np.load(path)
         faces = data["faces"] if "faces" in data else None
         source_fps = float(data["source_fps"]) if "source_fps" in data else None
+        p_throws = str(data["p_throws"]) if "p_throws" in data else None
         return MeshData(
             vertices=data["vertices"],
             joints_mhr70=data["joints_mhr70"],
@@ -425,6 +443,7 @@ class PitchDB:
             focal_length=float(data["focal_length"]),
             faces=faces,
             source_fps=source_fps,
+            p_throws=p_throws,
         )
 
     def _save_mesh(self, play_id: str, game_pk: int, mesh: MeshData) -> Path:
@@ -448,5 +467,7 @@ class PitchDB:
             arrays["faces"] = mesh.faces
         if mesh.source_fps is not None:
             arrays["source_fps"] = np.array(float(mesh.source_fps))
+        if mesh.p_throws is not None:
+            arrays["p_throws"] = np.array(str(mesh.p_throws))
         np.savez_compressed(path, **arrays)
         return path

@@ -73,6 +73,7 @@ class PitchClip:
     pitch_number_in_ab: int  # pitch number within at-bat
     pitch_type: str
     release_speed: float | None
+    p_throws: str | None  # 'R' or 'L' from Statcast — pitcher handedness
     description: str  # ball, called_strike, swinging_strike, hit_into_play, etc.
     events: str | None  # strikeout, home_run, etc. (only on last pitch of AB)
     video_url: str
@@ -283,6 +284,7 @@ def fetch_game_clips(
             pitch_number_in_ab=pitch_num_in_ab,
             pitch_type=pitch_type,
             release_speed=entry.get("release_speed"),
+            p_throws=entry.get("p_throws"),
             description=description,
             events=events or None,
             video_url=mp4_url,

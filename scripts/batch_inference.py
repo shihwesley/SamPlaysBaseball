@@ -440,6 +440,10 @@ def main():
             failed += 1
             continue
 
+        # Stamp pitcher handedness onto the mesh so the Blender viewer
+        # picks the right pivot foot without env-var defaults.
+        mesh.p_throws = pitch["p_throws"] if "p_throws" in pitch.keys() else None
+
         db.update_mesh(play_id, mesh, inference_time_ms=inference_ms)
         processed += 1
 
