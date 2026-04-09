@@ -170,8 +170,17 @@ Key conversions:
 
 ## File Structure
 
+The model code lives upstream in [mlx-vlm](https://github.com/Blaizzy/mlx-vlm) (PR [#922](https://github.com/Blaizzy/mlx-vlm/pull/922)). This package keeps only the baseball-specific glue and aliases every upstream submodule under the `sam3d_mlx.*` namespace via `sys.modules`, so existing callsites like `from sam3d_mlx.estimator import SAM3DBodyEstimator` keep working unchanged.
+
 ```
-mlx_vlm/models/sam3d_body/
+SamPlaysBaseball/sam3d_mlx/        # baseball-side (this package)
+├── __init__.py            # Facade: aliases mlx_vlm.models.sam3d_body.* as sam3d_mlx.*
+├── __main__.py            # CLI: python -m sam3d_mlx
+├── sam31_detector.py      # SAM 3.1 pitcher detector wrapper
+├── video.py               # Per-pitch video I/O and skeleton rendering
+└── README.md              # (this file)
+
+mlx-vlm/mlx_vlm/models/sam3d_body/ # upstream (imported via editable install)
 ├── __init__.py            # Module exports (Model, ModelConfig, VisionModel, LanguageModel)
 ├── config.py              # SAM3DConfig, VisionConfig, TextConfig dataclasses
 ├── model.py               # SAM3DBody — top-level forward, weight loading, sanitize()
@@ -188,12 +197,26 @@ mlx_vlm/models/sam3d_body/
 ├── batch_prep.py          # Crop, resize, ImageNet normalize, CLIFF conditioning
 ├── estimator.py           # SAM3DBodyEstimator — preprocessing + inference + OBJ export
 ├── generate.py            # SAM3DPredictor — mlx-vlm from_pretrained/predict API
-├── video.py               # Video pipeline with skeleton overlay rendering
 ├── convert_weights.py     # PyTorch .ckpt + JIT .pt → safetensors converter
 ├── vision.py              # VisionModel stub (wraps backbone for mlx-vlm compat)
-├── language.py            # LanguageModel stub (raises NotImplementedError)
-└── __main__.py            # CLI: python -m sam3d_mlx
+└── language.py            # LanguageModel stub (raises NotImplementedError)
 ```
+
+### Installing the upstream dependency
+
+For development against the PR branch, install mlx-vlm in editable mode:
+
+```bash
+pip install -e /path/to/mlx-vlm --break-system-packages
+```
+
+Or reproducibly from the repository root via `requirements.txt`:
+
+```bash
+pip install -r requirements.txt --break-system-packages
+```
+
+Once PR 922 merges, swap the git pin in `requirements.txt` for a released version.
 
 ### mlx-vlm Integration
 

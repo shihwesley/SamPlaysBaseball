@@ -1,0 +1,20 @@
+# SamPlaysBaseball — Python dependencies
+#
+# SCOPE: This file currently pins only the git-sourced dependencies that
+# SamPlaysBaseball needs but are not yet available from PyPI. Runtime
+# packages (numpy, opencv-python, Pillow, mlx, transformers, etc.) are
+# expected to already be present in the environment and are not enumerated
+# here. If you need a full environment lock, generate one separately.
+#
+# Install:
+#     pip install -r requirements.txt --break-system-packages
+#
+# For local development against the mlx-vlm checkout, prefer editable mode:
+#     pip install -e /path/to/mlx-vlm --break-system-packages
+#
+# -----------------------------------------------------------------------
+# SAM 3D Body model (currently lives on a PR branch of a personal fork).
+# Track: https://github.com/Blaizzy/mlx-vlm/pull/922
+# When PR 922 merges upstream, replace this line with a version pin:
+#     mlx-vlm>=<next-release>
+mlx-vlm @ git+https://github.com/shihwesley/mlx-vlm.git@feat/sam-3d-body
